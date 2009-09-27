@@ -67,6 +67,8 @@ public class KThread {
     public KThread(Runnable target) {
 	this();
 	this.target = target;
+	// # Q1
+	threadDoneSignal = new Semaphore(0);
     }
 
     /**
@@ -187,13 +189,13 @@ public class KThread {
 	Machine.interrupt().disable();
 
 	Machine.autoGrader().finishingCurrentThread();
+	
+	// # Q1
+	currentThread.threadDoneSignal.V();
 
 	Lib.assertTrue(toBeDestroyed == null);
 	toBeDestroyed = currentThread;
-
-
 	currentThread.status = statusFinished;
-	
 	sleep();
     }
 
@@ -274,7 +276,14 @@ public class KThread {
      */
     public void join() {
 	Lib.debug(dbgThread, "Joining to thread: " + toString());
-
+	
+	// # Q1
+	// allow joining only on non-finished KThreads
+	if(status != statusFinished)
+	{
+		// wait for the sema4 to be decremented back to 0 when the other thread will be done
+		threadDoneSignal.P();
+	}
 	Lib.assertTrue(this != currentThread);
 
     }
@@ -393,9 +402,35 @@ public class KThread {
 		currentThread.yield();
 	    }
 	}
-
 	private int which;
     }
+    
+    /*
+     * # Q1
+     * JoinTest
+     * Tests the join method
+     */
+   private static class JoinTest implements Runnable
+   {
+   	
+   		JoinTest(int which)
+   		{
+   			this.which = which;
+   		}
+   		public void run()
+   		{
+   			Lib.debug(dbgThread, "Starting JoinTest::run()");
+   			for(int i = 1000; i < 1200; ++i)
+   			{
+   				System.out.println("*** thread " + which + " looped " + i + " times (JoinTest)");
+   				currentThread.yield();
+   			}
+   			Lib.debug(dbgThread, "Ending JoinTest::run()");
+   		}
+   		private int which;
+   }
+   
+   
 
     /**
      * Tests whether this module is working.
@@ -406,7 +441,16 @@ public class KThread {
 	new KThread(new PingTest(1)).setName("forked thread").fork();
 	new PingTest(0).run();
 	
-	//
+	// # Q1
+	// run a test for join
+	Lib.debug(dbgThread, "# Starting JoinTest");
+	KThread threadToJoin = new KThread(new JoinTest(2)).setName("forked thread to be joined");
+	threadToJoin.fork();
+	threadToJoin.join();
+	Lib.debug(dbgThread, "Running after calling join()");
+	
+	
+	
     }
 
     private static final char dbgThread = 't';
@@ -446,4 +490,7 @@ public class KThread {
     private static KThread currentThread = null;
     private static KThread toBeDestroyed = null;
     private static KThread idleThread = null;
+    
+    // # Q1
+    public Semaphore threadDoneSignal;
 }
