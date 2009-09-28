@@ -430,7 +430,56 @@ public class KThread {
    		private int which;
    }
    
+   private static class Condition2RunnerA implements Runnable
+   {
+	   Condition2RunnerA(Condition cond, Lock condLock, int counter, int which)
+	   {
+		   this.which = which;
+		   this.cond = cond;
+		   this.condLock = condLock;
+		   this.counter = counter;
+	   }
+	   public void run()
+	   {
+		   condLock.acquire();
+		   if(counter % 2 == 1)
+		   {
+			   // go to sleep until thread B increments the counter
+			   System.out.println("*** thread " + which + " (Condition2RunnerA) - going to sleep");
+			   cond.sleep();
+			   // being here means B signaled A and the lock has been acquired by A
+			   System.out.println("*** thread " + which + " (Condition2RunnerA) - condition has met"); 
+		   }
+		   condLock.release();
+	   }
+	   private int which;
+	   private int counter;
+	   private Condition cond;
+	   private Lock condLock;
+   }
    
+   private static class Condition2RunnerB implements Runnable
+   {
+	   Condition2RunnerB(Condition cond, Lock condLock, int counter, int which)
+	   {
+		   this.which = which;
+		   this.condLock = condLock;
+		   this.counter = counter;
+		   this.cond = cond;
+	   }
+	   public void run()
+	   {
+		   condLock.acquire();
+		   System.out.println("*** thread " + which + " (Condition2RunnerB) - incrementing counter");
+		   counter++;
+		   cond.wake();
+		   condLock.release();
+	   }
+	   private int which;
+	   private int counter;
+	   private Lock condLock;
+	   private Condition cond;
+   }
 
     /**
      * Tests whether this module is working.
@@ -449,7 +498,19 @@ public class KThread {
 	threadToJoin.join();
 	Lib.debug(dbgThread, "Running after calling join()");
 	
+	// # Q2
+	// run a test for Condition2
+	Lib.debug(dbgThread, "# Starting Coondition2 test");
+	Lock lok = new Lock();
+	Condition cond = new Condition(lok);
+	int counter = 1;
 	
+	KThread t1 = new KThread(new Condition2RunnerA(cond, lok, counter, 3)).setName("CondRunnerA");
+	KThread t2 = new KThread(new Condition2RunnerB(cond, lok, counter, 4)).setName("CondRunnerB");
+	t1.fork();
+	t2.fork();
+	t1.join();
+	t2.join();
 	
     }
 
