@@ -147,19 +147,19 @@ public class Communicator
 		else //listener
 		{
 			receivedNumber = communicator.listen();
-			//System.out.printf("1st listen call returned %d\n", receivedNumber);
+			System.out.printf("1st listen call returned %d\n", receivedNumber);
 
 			receivedNumber = communicator.listen();
-			//System.out.printf("2nd listen call returned %d\n", receivedNumber);
+			System.out.printf("2nd listen call returned %d\n", receivedNumber);
 
 			receivedNumber = communicator.listen();
-			//System.out.printf("3rd listen call returned %d\n", receivedNumber);
+			System.out.printf("3rd listen call returned %d\n", receivedNumber);
 
 			receivedNumber = communicator.listen();
-			//System.out.printf("4th listen call returned %d\n", receivedNumber);
+			System.out.printf("4th listen call returned %d\n", receivedNumber);
 
 			receivedNumber = communicator.listen();
-			//System.out.printf("5th listen call returned %d\n", receivedNumber);
+			System.out.printf("5th listen call returned %d\n", receivedNumber);
 		}
 	}
 
@@ -172,9 +172,14 @@ public class Communicator
      */
     public static void selfTest() {
     	Communicator commObject = new Communicator();
+    	Communicator commObject2 = new Communicator();
 
     	new KThread(new CommunicatorTest(commObject, 1)).setName("speaker").fork();
     	new KThread(new CommunicatorTest(commObject, 2)).setName("listener").fork();
+    	
+    	new KThread(new CommunicatorTest(commObject2, 2)).setName("listener").fork();     	
+    	new KThread(new CommunicatorTest(commObject2, 1)).setName("speaker").fork();
+ 	
     }
 
     private Lock lock;
