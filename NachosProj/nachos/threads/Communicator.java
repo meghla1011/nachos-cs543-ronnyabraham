@@ -17,9 +17,11 @@ public class Communicator
     public Communicator()
     {
     	lock = new Lock();
-    	condition = new Condition(lock);
+    	condition = new Condition2(lock);
     	message = 0;
     	flag = false;
+    	listenerComplete = false;
+    	speakerComplete = false;
     }
 
     /**
@@ -38,11 +40,9 @@ public class Communicator
 
 		if (!flag)
 		{
+			lock.acquire();			
 			flag = true;
-			Lib.debug(debug, "Speak ready, waiting for listener");
-
-			lock.acquire();
-			Lib.debug(debug, "speaker has acquired the lock and is going to sleep");
+			Lib.debug(debug, "Speak ready, waiting for listener, going to sleep");
 			condition.sleep();
 
 			Lib.debug(debug, "Listener ready, speaker is continuing and going to send the word");
@@ -55,11 +55,21 @@ public class Communicator
 		}
 
 		Lib.debug(debug, "Word sent, speaker attempting to notify the listener");
-
-		lock.acquire();
+		lock.acquire();	
 		condition.wake();
+		
+		//if the listener is not complete, wait to exit until listener has received
+		//the word the speaker sent
+		if (!listenerComplete)
+		{
+			lock.acquire();	
+			condition.sleep();
+		}
+		
+		//Speaker will now finish and wake the listener so he also can finish
+		lock.acquire();
+		condition.wake();		
 		lock.release();
-
 		Lib.debug(debug, "Speaker FINISHED");
     }
 
@@ -84,7 +94,6 @@ public class Communicator
 			condition.sleep();
 
 			Lib.debug(debug, "listener has waken up after speaker finished");
-			//Listener should have now received the word from speaker
 		}
 		else
 		{
@@ -95,7 +104,24 @@ public class Communicator
 		}
 
 		flag = false;
-		Lib.debug(debug, "Listener received word and is FINISHED");
+		Lib.debug(debug, "Listener received word, waking speaker so he can exit");
+		lock.acquire();
+		condition.wake();
+		
+		//sleep till speaker has exited
+		lock.acquire();
+		condition.sleep();
+		lock.release();
+		
+		if (speakerComplete)
+		{
+			//reset variables and exit
+		    flag = false;
+		    listenerComplete = false;
+		    speakerComplete = false;	
+		}
+		
+		Lib.debug(debug, "Listener FINISHED");
 		return message;
 	}
 
@@ -112,30 +138,28 @@ public class Communicator
 
 		if (1 == type) //speaker
 		{		
-			//communicator.speak(1);
-			//communicator.speak(2);
+			communicator.speak(1);
+			communicator.speak(2);
 			communicator.speak(3);
-			//communicator.speak(4);
-			//communicator.speak(5);
-
-
+			communicator.speak(4);
+			communicator.speak(5);
 		}
 		else //listener
 		{
 			receivedNumber = communicator.listen();
-			System.out.printf("1st listen call returned %d\n", receivedNumber);
-
-			//communicator.listen();
 			//System.out.printf("1st listen call returned %d\n", receivedNumber);
 
-			//communicator.listen();
-			//System.out.printf("1st listen call returned %d\n", receivedNumber);
+			receivedNumber = communicator.listen();
+			//System.out.printf("2nd listen call returned %d\n", receivedNumber);
 
-			//communicator.listen();
-			//System.out.printf("1st listen call returned %d\n", receivedNumber);
+			receivedNumber = communicator.listen();
+			//System.out.printf("3rd listen call returned %d\n", receivedNumber);
 
-			//communicator.listen();
-			//System.out.printf("1st listen call returned %d\n", receivedNumber);
+			receivedNumber = communicator.listen();
+			//System.out.printf("4th listen call returned %d\n", receivedNumber);
+
+			receivedNumber = communicator.listen();
+			//System.out.printf("5th listen call returned %d\n", receivedNumber);
 		}
 	}
 
@@ -149,35 +173,16 @@ public class Communicator
     public static void selfTest() {
     	Communicator commObject = new Communicator();
 
-	//Seems to work:
-	// 1) Listener ready before speaker, speaker comes up and sends and listener receives without issue
-
-	//Known Problems:
-	// 1) If speaker is ready before listener, threads crash, not quite sure yet what is going on
-	// 2) Sparatic crashes on initialization between threads (probably from coming up and calling the lock)
-	//    Only seems to happen in this speaker ready without listener scenario.
-	//    Should we come up and call that lock is not held before calling?
-	// 3) Can't run back to back on anything.  Even runing listener ready before speaker back to back
-	//    fails.  I think we need some sort of logic to make sure that after the speaker sends, he
-	//    waits until listener is finished before starting over (sleep until receive wakes and tells him
-	//    he finished?)
-
-
-	//Test Works - listener before speaker works
-	new KThread(new CommunicatorTest(commObject, 2)).setName("listener").fork();
-	new KThread(new CommunicatorTest(commObject, 1)).setName("speaker").fork();
-
-	//BROKEN - This case not working yet
-	//new KThread(new CommunicatorTest(commObject, 1)).setName("speaker").fork();
-	//new KThread(new CommunicatorTest(commObject, 2)).setName("listener").fork();
-
-
+    	new KThread(new CommunicatorTest(commObject, 1)).setName("speaker").fork();
+    	new KThread(new CommunicatorTest(commObject, 2)).setName("listener").fork();
     }
 
     private Lock lock;
     private static final char debug = 't';
     int message;
-    Condition condition;
+    Condition2 condition;
     boolean flag;
+    boolean listenerComplete;
+    boolean speakerComplete;
 
 }
