@@ -6,8 +6,6 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.sun.xml.internal.bind.v2.schemagen.xmlschema.List;
-
 import nachos.machine.*;
 
 
@@ -28,7 +26,7 @@ public class Alarm {
     	Machine.timer().setInterruptHandler(new Runnable() {
 		public void run() { timerInterrupt(); }
 	    });
-    	
+
     	 sleepers  = new HashMap<Long, LinkedList<KThread>>();
     	 multimapProtector = new Lock();
     }
@@ -42,10 +40,10 @@ public class Alarm {
     public void timerInterrupt()
     {
     	KThread.currentThread().yield();
-    	
+
     	boolean oldInterrupStatus = Machine.interrupt().disable();
-		
-    	
+
+
     	int mapsz = sleepers.size();
     	Iterator iter = sleepers.entrySet().iterator();
     	for(int i = 0; i < mapsz; ++i)
@@ -62,7 +60,7 @@ public class Alarm {
     				thread.ready();
     				lst.remove(j);
     			}
-    		}    		
+    		}
     	}
 		// enable the interrupt
 		Machine.interrupt().restore(oldInterrupStatus);
@@ -102,7 +100,7 @@ public class Alarm {
 		// enable the interrupt
 		Machine.interrupt().restore(oldInterrupStatus);
     }
-    
+
     // # Q2
     private static class Sleepy implements Runnable
     {
@@ -118,13 +116,13 @@ public class Alarm {
  				   ", going to sleep for " + sleepTime);
  		   alrm.waitUntil(sleepTime);
  		   Lib.debug(dbgThread, "@@@ " + name + " says: woke up at: " + Machine.timer().getTime());
- 		   
+
         }
  	   private String name;
  	   private Alarm alrm;
  	   private long sleepTime;
     }
-    
+
     /**
      * Tests whether this module is working.
      */
@@ -135,22 +133,22 @@ public class Alarm {
         KThread sleepy2 = new KThread (new Sleepy("sleepy2", alrm, 1300)).setName("sleepy2");
         KThread sleepy3 = new KThread (new Sleepy("sleepy3", alrm, 6600)).setName("sleepy3");
         KThread sleepy4 = new KThread (new Sleepy("sleepy4", alrm, 100)).setName("sleepy4");
-        
+
         sleepy1.fork();
         sleepy2.fork();
         sleepy3.fork();
         sleepy4.fork();
-        
+
         sleepy3.join();
     }
-    
+
     // # Q3
     // This is a multimap of KThreads (a TreeMap of Longs to Lists)
-    // We use a multimap because it is more efficient - since a multimap is 
+    // We use a multimap because it is more efficient - since a multimap is
     // sorted we can stop iterating when we reach a value greater thn the current time
     // (look in timerInterrupt for more details)
     private Map sleepers;
     // Lock for protecting the multimap access
-    Lock multimapProtector; 
+    Lock multimapProtector;
     private static final char dbgThread = 't';
 }
