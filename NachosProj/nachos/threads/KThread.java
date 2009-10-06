@@ -431,10 +431,6 @@ public class KThread {
                 private int which;
    }
    
-
-   
-   
-
    
     /**
      * Tests whether this module is working.

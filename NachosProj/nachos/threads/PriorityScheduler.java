@@ -5,6 +5,7 @@ import nachos.machine.*;
 import java.util.TreeSet;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Vector;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -140,9 +141,37 @@ public class PriorityScheduler extends Scheduler {
 	    getThreadState(thread).acquire(this);
 	}
 
+	//Q5 this method is different from the pickNextThread
+	//since it will modify the state of the threads waiting
+	//in the datasturcure PQueue. 
 	public KThread nextThread() {
+		//runningThread is the thread
+		//that is hold the current lock 
+		//since it has finished the nextThread will get the
+		//lock and will start to run
+		if(runningThread != null)
+		{
+			runningThread.listOfHPThreads.clear();
+			/*
+			if(runningThread.inheritedPriority)
+			{
+				
+				runningThread.setPriority(runningThread.oldPriority);
+				runningThread.inheritedPriority = false;
+			}
+			*/
+			runningThread = null;
+		}
 	    Lib.assertTrue(Machine.interrupt().disabled());
-	    // implement me
+	    
+	    ThreadState nThread = pickNextThread();
+	    if(nThread != null)
+	    {
+	    	pQueue.remove(nThread);
+	    	nThread.acquire(this);
+	    	return nThread.thread;
+	    }
+	    
 	    return null;
 	}
 
@@ -154,7 +183,21 @@ public class PriorityScheduler extends Scheduler {
 	 *		return.
 	 */
 	protected ThreadState pickNextThread() {
-	    // implement me
+	    if(!pQueue.isEmpty())	    	
+	    {
+	    	int maxPriority=0;
+	    	ThreadState retValue = null;
+	        for(int i=0; i < pQueue.size(); i++)
+	        {
+	        	int currentPriority = pQueue.get(i).getEffectivePriority();
+	        	if(currentPriority > maxPriority)
+	        	{
+	        		maxPriority = currentPriority;
+	        		retValue = pQueue.get(i);
+	        	}
+	        }
+	        return retValue;
+	    }
 	    return null;
 	}
 	
@@ -168,6 +211,12 @@ public class PriorityScheduler extends Scheduler {
 	 * threads to the owning thread.
 	 */
 	public boolean transferPriority;
+	
+	//Q5
+	//This list maintains the threads in the queue that are
+	//wait for the resource. 
+	Vector<ThreadState> pQueue = new Vector<ThreadState>();
+	public ThreadState runningThread; 
     }
 
     /**
@@ -205,7 +254,27 @@ public class PriorityScheduler extends Scheduler {
 	 * @return	the effective priority of the associated thread.
 	 */
 	public int getEffectivePriority() {
-	    // implement me
+	    //Q5 If there are no other higher priority threads
+		// that are in the queue that are waiting then 
+		//priority is same as the priority of the current
+		//thread. If there are higher priority threads
+	    //that are waiting the priority inversion takes place
+		//the current low priority threads get the priority
+		//of the highest priority among the waiting threads. 
+		if(listOfHPThreads.size() > 0)
+		{
+			int inheritedP = priority;
+			for(int i = 0; i < listOfHPThreads.size(); ++i)
+			{
+				if(listOfHPThreads.get(i).getPriority() > inheritedP)
+				{
+					inheritedP =  listOfHPThreads.get(i).getPriority();
+				}				
+			}
+			//oldPriority = priority;
+			priority = inheritedP;
+			//inheritedPriority = true;
+		}
 	    return priority;
 	}
 
@@ -218,9 +287,20 @@ public class PriorityScheduler extends Scheduler {
 	    if (this.priority == priority)
 		return;
 	    
-	    this.priority = priority;
+	    if(priority <= priorityMinimum)
+	    {
+	    	this.priority = priorityMinimum;
+	    }
+	    else if(priority >= priorityMaximum)
+	    {
+	    	this.priority = priorityMaximum;
+	    }
+	    else
+	    {
+	    	this.priority = priority;
+	    }
 	    
-	    // implement me
+	    
 	}
 
 	/**
@@ -236,7 +316,19 @@ public class PriorityScheduler extends Scheduler {
 	 * @see	nachos.threads.ThreadQueue#waitForAccess
 	 */
 	public void waitForAccess(PriorityQueue waitQueue) {
-	    // implement me
+	    waitQueue.pQueue.add(this);
+	    
+	    //we also need to this thread to the list of higher 
+	    //priority threads only if the current thread 
+	    //priority is greater than the priority of the
+	    //running thread. 
+	    if(waitQueue.transferPriority)
+	    {
+	    	if( this.priority > waitQueue.runningThread.getPriority())
+	    	{
+	    		waitQueue.runningThread.listOfHPThreads.add(this);
+	    	}
+	    }
 	}
 
 	/**
@@ -250,12 +342,18 @@ public class PriorityScheduler extends Scheduler {
 	 * @see	nachos.threads.ThreadQueue#nextThread
 	 */
 	public void acquire(PriorityQueue waitQueue) {
-	    // implement me
+	    if(waitQueue.transferPriority)
+	    {
+	    	waitQueue.runningThread = this;
+	    }
 	}	
 
 	/** The thread with which this object is associated. */	   
 	protected KThread thread;
 	/** The priority of the associated thread. */
 	protected int priority;
+	//public int oldPriority;
+	//public boolean inheritedPriority = true;
+	public Vector<ThreadState> listOfHPThreads = new Vector<ThreadState>();
     }
 }
