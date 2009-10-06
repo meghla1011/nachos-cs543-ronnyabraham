@@ -40,7 +40,7 @@ public class Communicator
 
 		if (!flag)
 		{
-			lock.acquire();
+			lock.acquire();			
 			flag = true;
 			Lib.debug(debug, "Speak ready, waiting for listener, going to sleep");
 			condition.sleep();
@@ -55,20 +55,20 @@ public class Communicator
 		}
 
 		Lib.debug(debug, "Word sent, speaker attempting to notify the listener");
-		lock.acquire();
+		lock.acquire();	
 		condition.wake();
-
+		
 		//if the listener is not complete, wait to exit until listener has received
 		//the word the speaker sent
 		if (!listenerComplete)
 		{
-			lock.acquire();
+			lock.acquire();	
 			condition.sleep();
 		}
-
+		
 		//Speaker will now finish and wake the listener so he also can finish
 		lock.acquire();
-		condition.wake();
+		condition.wake();		
 		lock.release();
 		Lib.debug(debug, "Speaker FINISHED");
     }
@@ -107,20 +107,20 @@ public class Communicator
 		Lib.debug(debug, "Listener received word, waking speaker so he can exit");
 		lock.acquire();
 		condition.wake();
-
+		
 		//sleep till speaker has exited
 		lock.acquire();
 		condition.sleep();
 		lock.release();
-
+		
 		if (speakerComplete)
 		{
 			//reset variables and exit
 		    flag = false;
 		    listenerComplete = false;
-		    speakerComplete = false;
+		    speakerComplete = false;	
 		}
-
+		
 		Lib.debug(debug, "Listener FINISHED");
 		return message;
 	}
@@ -137,29 +137,38 @@ public class Communicator
 		int receivedNumber = 0;
 
 		if (1 == type) //speaker
-		{
+		{		
 			communicator.speak(1);
+			Lib.debug(debug, "1st speak call sent " + 1);
+			
 			communicator.speak(2);
+			Lib.debug(debug, "2nd speak call sent " + 2);
+			
 			communicator.speak(3);
+			Lib.debug(debug, "3rd speak call sent " + 3);
+			
 			communicator.speak(4);
+			Lib.debug(debug, "4th speak call sent " + 4);
+			
 			communicator.speak(5);
+			Lib.debug(debug, "5th speak call sent " + 5);
 		}
 		else //listener
 		{
 			receivedNumber = communicator.listen();
-			//System.out.printf("1st listen call returned %d\n", receivedNumber);
+			Lib.debug(debug, "1st listen call returned " + receivedNumber);
 
 			receivedNumber = communicator.listen();
-			//System.out.printf("2nd listen call returned %d\n", receivedNumber);
+			Lib.debug(debug, "2nd listen call returned " + receivedNumber);
 
 			receivedNumber = communicator.listen();
-			//System.out.printf("3rd listen call returned %d\n", receivedNumber);
+			Lib.debug(debug, "3rd listen call returned " + receivedNumber);
 
 			receivedNumber = communicator.listen();
-			//System.out.printf("4th listen call returned %d\n", receivedNumber);
+			Lib.debug(debug, "4th listen call returned " + receivedNumber);
 
 			receivedNumber = communicator.listen();
-			//System.out.printf("5th listen call returned %d\n", receivedNumber);
+			Lib.debug(debug, "5th listen call returned " + receivedNumber);
 		}
 	}
 
@@ -176,10 +185,10 @@ public class Communicator
 
     	new KThread(new CommunicatorTest(commObject, 1)).setName("speaker").fork();
     	new KThread(new CommunicatorTest(commObject, 2)).setName("listener").fork();
-
-    	new KThread(new CommunicatorTest(commObject2, 2)).setName("listener").fork();
+    	
+    	new KThread(new CommunicatorTest(commObject2, 2)).setName("listener").fork();     	
     	new KThread(new CommunicatorTest(commObject2, 1)).setName("speaker").fork();
-
+ 	
     }
 
     private Lock lock;
