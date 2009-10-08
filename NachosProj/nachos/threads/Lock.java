@@ -31,45 +31,37 @@ public class Lock {
      * this lock.
      */
     public void acquire() {
-    	
-    	//Modified this so an assert is not throw if the caller already holds the lock.
-    	//Will now just return as if it acquired it for that thread.
-    	if (!isHeldByCurrentThread())
-    	{
-    		boolean intStatus = Machine.interrupt().disable();
-    		KThread thread = KThread.currentThread();
+	Lib.assertTrue(!isHeldByCurrentThread());
 
-    		if (lockHolder != null) {
-    			waitQueue.waitForAccess(thread);
-    			KThread.sleep();
-    		}
-    		else {
-    			waitQueue.acquire(thread);
-    			lockHolder = thread;
-    		}
+	boolean intStatus = Machine.interrupt().disable();
+	KThread thread = KThread.currentThread();
 
-    		Lib.assertTrue(lockHolder == thread);
+	if (lockHolder != null) {
+	    waitQueue.waitForAccess(thread);
+	    KThread.sleep();
+	}
+	else {
+	    waitQueue.acquire(thread);
+	    lockHolder = thread;
+	}
 
-    		Machine.interrupt().restore(intStatus);
-    	}
+	Lib.assertTrue(lockHolder == thread);
+
+	Machine.interrupt().restore(intStatus);
     }
 
     /**
      * Atomically release this lock, allowing other threads to acquire it.
      */
     public void release() {
-    	
-    	//Modified this so an assert is not throw if the caller doesn't hold the lock.
-    	//Will now just return as if it acquired it for that thread.
-    	if (isHeldByCurrentThread())
-    	{
-    		boolean intStatus = Machine.interrupt().disable();
+	Lib.assertTrue(isHeldByCurrentThread());
 
-    		if ((lockHolder = waitQueue.nextThread()) != null)
-    			lockHolder.ready();
+	boolean intStatus = Machine.interrupt().disable();
 
-    		Machine.interrupt().restore(intStatus);
-    	}
+	if ((lockHolder = waitQueue.nextThread()) != null)
+	    lockHolder.ready();
+	
+	Machine.interrupt().restore(intStatus);
     }
 
     /**
