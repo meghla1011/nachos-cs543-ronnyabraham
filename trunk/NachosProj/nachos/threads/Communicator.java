@@ -40,7 +40,10 @@ public class Communicator
 
 		if (!flag)
 		{
-			lock.acquire();			
+			if (!lock.isHeldByCurrentThread())
+			{
+				lock.acquire();	
+			}
 			flag = true;
 			Lib.debug(debug, "Speak ready, waiting for listener, going to sleep");
 			condition.sleep();
@@ -55,21 +58,39 @@ public class Communicator
 		}
 
 		Lib.debug(debug, "Word sent, speaker attempting to notify the listener");
-		lock.acquire();	
+		
+		if (!lock.isHeldByCurrentThread())
+		{
+			lock.acquire();	
+		}
+		
 		condition.wake();
 		
 		//if the listener is not complete, wait to exit until listener has received
 		//the word the speaker sent
 		if (!listenerComplete)
 		{
-			lock.acquire();	
+			if (!lock.isHeldByCurrentThread())
+			{
+				lock.acquire();	
+			}
+			
 			condition.sleep();
 		}
 		
 		//Speaker will now finish and wake the listener so he also can finish
-		lock.acquire();
-		condition.wake();		
-		lock.release();
+		if (!lock.isHeldByCurrentThread())
+		{
+			lock.acquire();
+		}
+		
+		condition.wake();
+		
+		if (lock.isHeldByCurrentThread())
+		{
+			lock.release();
+		}	
+
 		Lib.debug(debug, "Speaker FINISHED");
     }
 
@@ -86,11 +107,20 @@ public class Communicator
 		if (flag)
 		{
 			Lib.debug(debug, "Listener ready, proceeding to try to listen to message from speak");
-			lock.acquire();
+			
+			if (!lock.isHeldByCurrentThread())
+			{
+				lock.acquire();
+			}
+
 			condition.wake();
 
 			Lib.debug(debug, "listener has called to wake speaker, now going to sleep");
-			lock.acquire();
+			if (!lock.isHeldByCurrentThread())
+			{
+				lock.acquire();
+			}
+
 			condition.sleep();
 
 			Lib.debug(debug, "listener has waken up after speaker finished");
@@ -99,19 +129,35 @@ public class Communicator
 		{
 			flag = true;
 			Lib.debug(debug, "Listener ready, waiting for speaker");
-			lock.acquire();
+			if (!lock.isHeldByCurrentThread())
+			{
+				lock.acquire();
+			}
+
 			condition.sleep();
 		}
 
 		flag = false;
 		Lib.debug(debug, "Listener received word, waking speaker so he can exit");
-		lock.acquire();
+		if (!lock.isHeldByCurrentThread())
+		{
+			lock.acquire();
+		}
+
 		condition.wake();
 		
 		//sleep till speaker has exited
-		lock.acquire();
+		if (!lock.isHeldByCurrentThread())
+		{
+			lock.acquire();
+		}
+
 		condition.sleep();
-		lock.release();
+		
+		if (lock.isHeldByCurrentThread())
+		{
+			lock.release();
+		}
 		
 		if (speakerComplete)
 		{
