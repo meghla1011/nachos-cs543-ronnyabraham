@@ -26,7 +26,9 @@ public class Condition2 {
     	// # Q2
     	// Allocate a new ThreadQueue, do not transfer priority
     	// to the ThreadQueue
-    	waitQ = ThreadedKernel.scheduler.newThreadQueue(false);
+    	rr = new RoundRobinScheduler();
+    	waitQ = rr.newThreadQueue(false);
+    	//waitQ = ThreadedKernel.scheduler.newThreadQueue(false);
     	this.conditionLock = conditionLock;
     }
 
@@ -40,7 +42,7 @@ public class Condition2 {
     {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 		
-		// release the lock which was acquired by teh cirrentThread before calling sleep 
+		// release the lock which was acquired by the currentThread before calling sleep 
 		conditionLock.release();
 		// disable the interrupts to provide atomicity
 		boolean oldInterrupStatus = Machine.interrupt().disable();
@@ -102,7 +104,6 @@ public class Condition2 {
     }
     
     // # Q2
- // # Q2
     private static class MyInt
     {
  		public MyInt()
@@ -192,9 +193,10 @@ public class Condition2 {
     // # Q2
     // We will use a ThreadQueue to provide a mechanism for threads to wait
     // for the condition variable to be released
-    // For Q2 we use roundrobin scheduler, hence a ThreadQueue is a FIFO queue implemented
+    // For Q2 we use roundrobin scheduler to provide a ThreadQueue which is a FIFO queue implemented
     // with a linked list. This means that threads waiting on our Condition will be wakened
     // in the FIFO order
+    private RoundRobinScheduler rr;
     private ThreadQueue waitQ;
     private Lock conditionLock;
     private static final char dbgThread = 't';
