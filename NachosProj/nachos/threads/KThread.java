@@ -448,16 +448,18 @@ public class KThread {
         threadToJoin.fork();
         threadToJoin.join();
         Lib.debug(dbgThread, "Running after calling join()");
-
+        
         Lib.debug(dbgThread, "# Starting Alarm test");
         Alarm.selfTest();
 
         Lib.debug(dbgThread, "# Starting Condition2 test");
         Condition2.selfTest();
 
-      
         Lib.debug(dbgThread, "# Starting Communicator test");
         Communicator.selfTest();
+        
+        Lib.debug(dbgThread, "# Starting PriorityScheduler test");
+        PriorityScheduler.selfTest();
     }
 
     private static final char dbgThread = 't';
