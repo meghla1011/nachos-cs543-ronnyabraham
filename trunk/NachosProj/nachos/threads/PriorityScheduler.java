@@ -2,7 +2,6 @@ package nachos.threads;
 
 import nachos.machine.*;
 
-
 import java.util.TreeMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -125,6 +124,75 @@ public class PriorityScheduler extends Scheduler {
 	return (ThreadState) thread.schedulingState;
     }
 
+    // # Q5 Self test
+    public static void selfTest()
+    {
+    	Semaphore s 	= new Semaphore(0);
+    	KThread low 	= new KThread(new LowPriorityThread()).setName("Low1");
+        KThread med 	= new KThread(new MediumPriorityThread(s)).setName("Med1");
+        KThread high 	= new KThread(new HighPriorityThread(s)).setName("High1");
+        
+        high.fork();
+        med.fork();
+        low.fork();
+    }
+    private static final char dbgThread = 't';
+    
+    private static class HighPriorityThread implements Runnable
+    {
+    	HighPriorityThread(Semaphore sema4)
+    	{
+    		this.sema4 = sema4;
+    	}
+    	public void run()
+    	{
+    		for(int i = 0; i < 60; ++i)
+    		{
+    			Lib.debug(dbgThread, "$$$ HighPriorityThread running, i = " + i);
+    		}
+    		// wait for someone else to release the sema4
+    		Lib.debug(dbgThread, "$$$ HighPriorityThread - before Semaphore.P()");
+    		sema4.P();
+    		Lib.debug(dbgThread, "$$$ HighPriorityThread - after Semaphore.P()");
+    	}
+    	private Semaphore sema4;
+    }
+    
+    private static class MediumPriorityThread implements Runnable
+    {
+    	MediumPriorityThread(Semaphore sema4)
+    	{
+    		this.sema4 = sema4;
+    	}
+    	public void run()
+    	{
+    		// release the sema4
+    		Lib.debug(dbgThread, "$$$ MediumPriorityThread before Semaphore.V()");
+    		sema4.V();
+    		Lib.debug(dbgThread, "$$$ MediumPriorityThread after Semaphore.V()");
+    		for(int i = 0; i < 50; ++i)
+    		{
+    			Lib.debug(dbgThread, "$$$ MediumPriorityThread running, i = " + i);
+    		}
+    	}
+    	private Semaphore sema4;
+    }
+    
+    private static class LowPriorityThread implements Runnable
+    {
+    	LowPriorityThread()
+    	{
+    	}
+    	public void run()
+    	{
+    		for(int i = 0; i < 20; ++i)
+    		{
+    			Lib.debug(dbgThread, "$$$ LowPriorityThread running, i = " + i);
+    		}
+    	}
+    }
+    
+    
     /**
      * A <tt>ThreadQueue</tt> that sorts threads by priority.
      */
