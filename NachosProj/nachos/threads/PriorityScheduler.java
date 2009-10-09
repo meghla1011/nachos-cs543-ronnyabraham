@@ -2,10 +2,12 @@ package nachos.threads;
 
 import nachos.machine.*;
 
-import java.util.TreeSet;
+
+import java.util.TreeMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Vector;
+import java.util.LinkedList;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -143,7 +145,7 @@ public class PriorityScheduler extends Scheduler {
 
 	//Q5 this method is different from the pickNextThread
 	//since it will modify the state of the threads waiting
-	//in the datasturcure PQueue. 
+	//in the data structure PQueue. 
 	public KThread nextThread() {
 		//runningThread is the thread
 		//that is hold the current lock 
@@ -152,14 +154,14 @@ public class PriorityScheduler extends Scheduler {
 		if(runningThread != null)
 		{
 			runningThread.listOfHPThreads.clear();
-			/*
+			
 			if(runningThread.inheritedPriority)
 			{
 				
 				runningThread.setPriority(runningThread.oldPriority);
 				runningThread.inheritedPriority = false;
 			}
-			*/
+			
 			runningThread = null;
 		}
 	    Lib.assertTrue(Machine.interrupt().disabled());
@@ -167,7 +169,13 @@ public class PriorityScheduler extends Scheduler {
 	    ThreadState nThread = pickNextThread();
 	    if(nThread != null)
 	    {
-	    	pQueue.remove(nThread);
+	    	Integer highP = pQueue.lastKey();
+	    	LinkedList<ThreadState> threads = pQueue.get(highP);
+	    	threads.remove(nThread);
+	    	if(threads.size() == 0)
+	    	{
+	    		pQueue.remove(highP);
+	    	}
 	    	nThread.acquire(this);
 	    	return nThread.thread;
 	    }
@@ -185,17 +193,31 @@ public class PriorityScheduler extends Scheduler {
 	protected ThreadState pickNextThread() {
 	    if(!pQueue.isEmpty())	    	
 	    {
-	    	int maxPriority=0;
+	    	
 	    	ThreadState retValue = null;
-	        for(int i=0; i < pQueue.size(); i++)
-	        {
-	        	int currentPriority = pQueue.get(i).getEffectivePriority();
-	        	if(currentPriority > maxPriority)
-	        	{
-	        		maxPriority = currentPriority;
-	        		retValue = pQueue.get(i);
-	        	}
-	        }
+	    	Integer highP = pQueue.lastKey();
+	    	LinkedList<ThreadState> threads = pQueue.get(highP);
+	    	
+	    	//there are multiple threads waiting for the given priority
+	    	if(threads.size() > 1)
+	    	{
+	    		long prevWaitTime = 0; 
+	    		for(int i = 0; i < threads.size() ; i++)
+	    		{
+	    			long currWaitTime = Machine.timer().getTime() - threads.get(i).insertTime;
+	    			if(currWaitTime > prevWaitTime)
+	    			{
+	    				prevWaitTime = currWaitTime;
+	    				retValue = threads.get(i);
+	    			}
+	    		}
+	    	}
+	    	else
+	    	{
+	    		//there is only one threads waiting for the given priority
+	    		retValue = threads.get(0);
+	    	}
+	        
 	        return retValue;
 	    }
 	    return null;
@@ -215,7 +237,7 @@ public class PriorityScheduler extends Scheduler {
 	//Q5
 	//This list maintains the threads in the queue that are
 	//wait for the resource. 
-	Vector<ThreadState> pQueue = new Vector<ThreadState>();
+	TreeMap<Integer,LinkedList<ThreadState>> pQueue = new TreeMap<Integer,LinkedList<ThreadState>>();
 	public ThreadState runningThread; 
     }
 
@@ -261,19 +283,15 @@ public class PriorityScheduler extends Scheduler {
 	    //that are waiting the priority inversion takes place
 		//the current low priority threads get the priority
 		//of the highest priority among the waiting threads. 
+		//Please note keys in TreeMap is already sorted
 		if(listOfHPThreads.size() > 0)
 		{
-			int inheritedP = priority;
-			for(int i = 0; i < listOfHPThreads.size(); ++i)
-			{
-				if(listOfHPThreads.get(i).getPriority() > inheritedP)
-				{
-					inheritedP =  listOfHPThreads.get(i).getPriority();
-				}				
-			}
-			//oldPriority = priority;
-			priority = inheritedP;
-			//inheritedPriority = true;
+			//below call to lastKey provides the optimization we 
+			//are looking for since the keys in treemap is already sorted. 
+			Integer highP = listOfHPThreads.lastKey();						
+			oldPriority = priority;
+			priority = highP;
+			inheritedPriority = true;
 		}
 	    return priority;
 	}
@@ -316,7 +334,15 @@ public class PriorityScheduler extends Scheduler {
 	 * @see	nachos.threads.ThreadQueue#waitForAccess
 	 */
 	public void waitForAccess(PriorityQueue waitQueue) {
-	    waitQueue.pQueue.add(this);
+		Integer currPriority = new Integer(this.getEffectivePriority());
+		LinkedList<ThreadState> waitingTh = waitQueue.pQueue.get(currPriority);
+		if(waitingTh == null)
+		{
+			waitingTh = new LinkedList<ThreadState>();
+			waitQueue.pQueue.put(currPriority,waitingTh);
+		}
+		this.insertTime = Machine.timer().getTime();
+	    waitingTh.add(this);
 	    
 	    //we also need to this thread to the list of higher 
 	    //priority threads only if the current thread 
@@ -326,7 +352,15 @@ public class PriorityScheduler extends Scheduler {
 	    {
 	    	if( this.priority > waitQueue.runningThread.getPriority())
 	    	{
-	    		waitQueue.runningThread.listOfHPThreads.add(this);
+	    		
+	    		LinkedList<ThreadState> threads = waitQueue.runningThread.listOfHPThreads.get(currPriority);
+	    		if( threads == null)
+	    		{
+	    			threads = new LinkedList<ThreadState>();	
+	    			waitQueue.runningThread.listOfHPThreads.put(currPriority,threads);
+	    		}	    		
+	    		
+	    		threads.add(this);
 	    	}
 	    }
 	}
@@ -352,8 +386,11 @@ public class PriorityScheduler extends Scheduler {
 	protected KThread thread;
 	/** The priority of the associated thread. */
 	protected int priority;
-	//public int oldPriority;
-	//public boolean inheritedPriority = true;
-	public Vector<ThreadState> listOfHPThreads = new Vector<ThreadState>();
+	public int oldPriority;
+	public boolean inheritedPriority = true;
+	public long insertTime; 
+	public TreeMap<Integer,LinkedList<ThreadState>> listOfHPThreads = new TreeMap<Integer,LinkedList<ThreadState>>();
     }
-}
+    
+        	
+}   
