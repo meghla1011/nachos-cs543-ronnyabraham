@@ -127,14 +127,51 @@ public class PriorityScheduler extends Scheduler {
     // # Q5 Self test
     public static void selfTest()
     {
+    	// Test 1 - We have 3 threads, low, med and high
+    	// high runs and waits for med to release a sema4
+    	// once the sema4 is released, when both high and low are
+    	// in the ready state, high will run before low
     	Semaphore s 	= new Semaphore(0);
     	KThread low 	= new KThread(new LowPriorityThread()).setName("Low1");
         KThread med 	= new KThread(new MediumPriorityThread(s)).setName("Med1");
         KThread high 	= new KThread(new HighPriorityThread(s)).setName("High1");
         
+        
+        boolean oldInterrupStatus = Machine.interrupt().disable();
+        ThreadedKernel.scheduler.setPriority(low, 1);
+        ThreadedKernel.scheduler.setPriority(med, 2);
+        ThreadedKernel.scheduler.setPriority(high, 3);
+		Machine.interrupt().restore(oldInterrupStatus);
+
         high.fork();
         med.fork();
         low.fork();
+        
+        low.join();
+        
+        // Test 2 - priority inversion
+        // We have 3 threads t1 t2 t3 with priorities 1, 2, 3 respectively
+        // t3 waits on a sema4, then t1 starts running wakes t2 then yields
+        // now t2 is running and if t1 doesn't get a donation it won't release t3
+        
+        Semaphore s1 	= new Semaphore(0);
+    	KThread t1 	= new KThread(new T1(s1)).setName("T1");
+        KThread t2 	= new KThread(new T2()).setName("T2");
+        KThread t3 	= new KThread(new T3(s1)).setName("T3");
+        
+        oldInterrupStatus = Machine.interrupt().disable();
+        ThreadedKernel.scheduler.setPriority(t1, 1);
+        ThreadedKernel.scheduler.setPriority(t2, 2);
+        ThreadedKernel.scheduler.setPriority(t3, 3);
+		Machine.interrupt().restore(oldInterrupStatus);
+		
+		t1.fork();
+		t3.fork();
+		t2.fork();
+		
+		t1.join();
+		t2.join();
+		t3.join();
     }
     private static final char dbgThread = 't';
     
@@ -192,6 +229,74 @@ public class PriorityScheduler extends Scheduler {
     	}
     }
     
+    private static class T1 implements Runnable
+    {
+    	T1(Semaphore sema4)
+    	{
+    		this.sema4 = sema4;
+    	}
+    	public void run()
+    	{
+    		Lib.debug(dbgThread, "&&& T1 starting");
+    		for(int i = 0; i < 10; ++i)
+    		{
+    			Lib.debug(dbgThread, "&&& T1 running, i = " + i);
+    		}
+    		Lib.debug(dbgThread, "&&& T1 - Yielding, to make sure I get preempted by T2");
+    		KThread.currentThread().yield();
+    		Lib.debug(dbgThread, "&&& T1 - before Semaphore.V()");
+    		sema4.V();
+    		Lib.debug(dbgThread, "&&& T1 - after Semaphore.V()");
+    	}
+    	private Semaphore sema4;
+    }
+    
+    private static class T2 implements Runnable
+    {
+    	T2()
+    	{
+    	}
+    	public void run()
+    	{
+    		KThread.currentThread().yield();
+    		for(int i = 0; i < 100; ++i)
+    		{
+    			Lib.debug(dbgThread, "&&& T2 running, i = " + i);
+    			if(i == 50)
+    			{
+    				Lib.debug(dbgThread, "&&& T2 yelding");
+    				KThread.currentThread().yield();
+    			}
+    		}
+    		Lib.debug(dbgThread, "&&& T2 before yelding");
+    		KThread.currentThread().yield();
+    		Lib.debug(dbgThread, "&&& T2 after yelding");
+    		for(int i = 100; i < 120; ++i)
+    		{
+    			Lib.debug(dbgThread, "&&& T2 running, i = " + i);
+    		}
+    		
+    	}
+    }
+    
+    private static class T3 implements Runnable
+    {
+    	T3(Semaphore sema4)
+    	{
+    		this.sema4 = sema4;
+    	}
+    	public void run()
+    	{
+    		Lib.debug(dbgThread, "&&& T3 before P()");
+    		sema4.P();
+    		Lib.debug(dbgThread, "&&& T3 after P()");
+    		for(int i = 0; i < 20; ++i)
+    		{
+    			Lib.debug(dbgThread, "&&& T3 running, i = " + i);
+    		}
+    	}
+    	private Semaphore sema4;
+    }
     
     /**
      * A <tt>ThreadQueue</tt> that sorts threads by priority.
