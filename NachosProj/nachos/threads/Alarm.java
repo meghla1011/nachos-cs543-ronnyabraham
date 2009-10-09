@@ -101,7 +101,7 @@ public class Alarm {
 		Machine.interrupt().restore(oldInterrupStatus);
     }
 
-    // # Q2
+    // # Q3
     private static class Sleepy implements Runnable
     {
  	   Sleepy(String name, Alarm alrm, long sleepTime)
