@@ -40,6 +40,7 @@ public class LotteryScheduler extends PriorityScheduler {
     {
     	selfTest1();
     	// selfTest2();
+    	System.out.println("bla");
     }
     
     /*
@@ -51,6 +52,10 @@ public class LotteryScheduler extends PriorityScheduler {
      * P(t2) = 5/20 = 0.25
      * P(t3) = 10/20 = 0.5
      * P(t4) = 3/20 = 0.15
+     * 
+     * 10/13/2009 - I ran this test with RR scheduler and each thread gets a slice
+     * as expected. When turning on Lottery Scheduling we get the expected distribution.
+     * -- Ronny A.
      */
     private static void selfTest1()
     {
@@ -87,7 +92,7 @@ public class LotteryScheduler extends PriorityScheduler {
     	{
     		for(int i = 0; i < 100; ++i)
     		{
-    			Lib.debug(dbgThread, "##@@ SimpleRunner " + id + "says:   " + i);
+    			Lib.debug(dbgThread, "##@@ SimpleRunner" + id + " says:   " + i);
     			KThread.currentThread().yield();
     		}
     	}

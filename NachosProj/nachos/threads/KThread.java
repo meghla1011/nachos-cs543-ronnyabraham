@@ -441,7 +441,25 @@ public class KThread {
         new KThread(new PingTest(1)).setName("forked thread").fork();
         new PingTest(0).run();
 
-        // # Q1
+        String curDir = System.getProperty("user.dir");
+        
+        // if this is nachos\proj1
+        if(curDir.endsWith("proj1"))
+        {
+        	selfTestProj1();
+        }
+        
+     // if this is nachos\proj2
+        if(curDir.endsWith("proj2"))
+        {
+        	selfTestProj2();
+        }
+        
+    }
+    
+    private static void selfTestProj1()
+    {
+    	// # Q1
         // run a test for join
         Lib.debug(dbgThread, "# Starting JoinTest");
         KThread threadToJoin = new KThread(new JoinTest(2)).setName("forked thread to be joined");
@@ -463,6 +481,12 @@ public class KThread {
 
         Lib.debug(dbgThread, "# Starting Boat test");
         Boat.selfTest();
+    }
+    
+    private static void selfTestProj2()
+    {
+    	Lib.debug(dbgThread, "# Starting LotteryScheduler test");
+    	LotteryScheduler.selfTest();
     }
 
     private static final char dbgThread = 't';
