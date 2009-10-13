@@ -1,7 +1,12 @@
 package nachos.threads;
 
 import nachos.machine.*;
+import nachos.threads.PriorityScheduler.PriorityQueue;
+import nachos.threads.PriorityScheduler.ThreadState;
 
+import java.util.LinkedList;
+import java.util.ListIterator;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -35,11 +40,10 @@ public class LotteryScheduler extends PriorityScheduler {
     	
     }
     
-    
     public static void selfTest()
     {
     	selfTest1();
-    	// selfTest2();
+    	//selfTest2();
     	System.out.println("bla");
     }
     
@@ -227,5 +231,169 @@ public class LotteryScheduler extends PriorityScheduler {
 	return null;
     }
     
+    
+    /**
+     * The default priority for a new thread. Do not change this value.
+     */
+    public static final int priorityDefault = 1;
+    /**
+     * The minimum priority that a thread can have. Do not change this value.
+     */
+    public static final int priorityMinimum = 1;
+    /**
+     * The maximum priority that a thread can have. Do not change this value.
+     */
+    public static final int priorityMaximum = Integer.MAX_VALUE; 
+    
     private static final char dbgThread = 't';
+    
+    ///////////////////////////////////////////////////////////////////////////
+    protected class LotteryQueue extends ThreadQueue 
+    {
+		LotteryQueue(boolean transferPriority)
+		{
+    	    this.transferPriority = transferPriority;
+    	}
+		
+		public  boolean transferPriority;
+
+		public void acquire(KThread thread)
+		{
+			// TODO Auto-generated method stub	
+		}
+
+		public KThread nextThread()
+		{
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		public void print()
+		{
+			// TODO Auto-generated method stub
+			
+		}
+
+		public void waitForAccess(KThread thread) 
+		{
+			// TODO Auto-generated method stub
+			
+		}
+		
+		public LinkedList<LotteryThreadState> waitingThreads = new LinkedList<LotteryThreadState>();
+		public LotteryThreadState runningThread;
+    }
+
+    
+    ///////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////
+    
+    protected class LotteryThreadState
+    {
+    	/**
+    	 * Allocate a new <tt>ThreadState</tt> object and associate it with the
+    	 * specified thread.
+    	 *
+    	 * @param	thread	the thread this state belongs to.
+    	 */
+    	public LotteryThreadState(KThread thread)
+    	{
+    		this.thread = thread;
+    	    setPriority(priorityDefault);
+    	}
+    	
+    	/**
+    	 * Return the priority of the associated thread.
+    	 *
+    	 * @return	the priority of the associated thread.
+    	 */
+    	public int getPriority()
+    	{
+    	    return priority;
+    	}
+    	
+    	/**
+    	 * Return the effective priority of the associated thread.
+    	 *
+    	 * @return	the effective priority of the associated thread.
+    	 */
+    	public int getEffectivePriority()
+    	{
+    		
+    	    return priority;
+    	}
+
+    	/**
+    	 * Set the priority of the associated thread to the specified value.
+    	 *
+    	 * @param	priority	the new priority.
+    	 */
+    	public void setPriority(int priority)
+    	{
+    	    if(this.priority == priority)
+    	    {
+    	    	return;
+    	    }
+    	    if(priority <= priorityMinimum)
+    	    {
+    	    	this.priority = priorityMinimum;
+    	    }
+    	    else if(priority >= priorityMaximum)
+    	    {
+    	    	this.priority = priorityMaximum;
+    	    }
+    	    else
+    	    {
+    	    	this.priority = priority;
+    	    }   
+    	}
+    	
+    	/**
+    	 * Called when <tt>waitForAccess(thread)</tt> (where <tt>thread</tt> is
+    	 * the associated thread) is invoked on the specified priority queue.
+    	 * The associated thread is therefore waiting for access to the
+    	 * resource guarded by <tt>waitQueue</tt>. This method is only called
+    	 * if the associated thread cannot immediately obtain access.
+    	 *
+    	 * @param	waitQueue	the queue that the associated thread is
+    	 *				now waiting on.
+    	 *
+    	 * @see	nachos.threads.ThreadQueue#waitForAccess
+    	 */
+    	public void waitForAccess(LotteryQueue waitQueue)
+    	{
+    		//add myself to the PriorityQueue
+    		//waitQueue.waitingThreads.add(this);
+    		// also add myself to the donating threads
+    		
+    		
+    		
+    	}
+
+    	/**
+    	 * Called when the associated thread has acquired access to whatever is
+    	 * guarded by <tt>waitQueue</tt>. This can occur either as a result of
+    	 * <tt>acquire(thread)</tt> being invoked on <tt>waitQueue</tt> (where
+    	 * <tt>thread</tt> is the associated thread), or as a result of
+    	 * <tt>nextThread()</tt> being invoked on <tt>waitQueue</tt>.
+    	 *
+    	 * @see	nachos.threads.ThreadQueue#acquire
+    	 * @see	nachos.threads.ThreadQueue#nextThread
+    	 */
+    	public void acquire(LotteryQueue waitQueue)
+    	{
+    	    if(waitQueue.transferPriority)
+    	    {
+    	    	waitQueue.runningThread = this;
+    	    }
+    	}	
+
+    	/** The thread with which this object is associated. */	   
+    	protected KThread thread;
+    	/** The priority of the associated thread. */
+    	protected int priority;
+    	
+    }
+        ///////////////////////////////////////////////////////////////////////
+    
 }
