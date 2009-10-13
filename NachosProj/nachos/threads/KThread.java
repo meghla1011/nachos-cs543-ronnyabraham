@@ -449,7 +449,7 @@ public class KThread {
         	selfTestProj1();
         }
         
-     // if this is nachos\proj2
+        // if this is nachos\proj2
         if(curDir.endsWith("proj2"))
         {
         	selfTestProj2();
