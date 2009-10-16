@@ -1,0 +1,13 @@
+create.c:
+	 - does a simple file create and a halt
+open.c:
+	-creates a file
+	-closes teh file
+	-opens the file that was created
+	-opens a file that does not exist
+	-closes the first open file
+	-closes the second open file
+	
+createClose.c:
+	-creates a test file
+	-closes the file using the file descriptor
