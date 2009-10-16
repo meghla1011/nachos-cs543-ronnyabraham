@@ -5,6 +5,10 @@ import nachos.threads.*;
 import nachos.userprog.*;
 
 import java.io.EOFException;
+import java.util.EmptyStackException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Stack;
 
 /**
  * Encapsulates the state of a user process that is not contained in its
@@ -22,12 +26,17 @@ public class UserProcess {
     /**
      * Allocate a new process.
      */
-    public UserProcess() {
-	int numPhysPages = Machine.processor().getNumPhysPages();
-	pageTable = new TranslationEntry[numPhysPages];
-	for (int i=0; i<numPhysPages; i++)
-	    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
-    }
+	public UserProcess()
+	{
+		int numPhysPages = Machine.processor().getNumPhysPages();
+		pageTable = new TranslationEntry[numPhysPages];
+		for (int i=0; i<numPhysPages; i++)
+		{
+			pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+		}
+		fileDescriptorManager = new FileDescriptorManager();
+		openedFileMap = new HashMap<String, OpenFile>();
+	}
     
     /**
      * Allocate and return a new process of the correct class. The class name
@@ -36,9 +45,10 @@ public class UserProcess {
      *
      * @return	a new process of the correct class.
      */
-    public static UserProcess newUserProcess() {
-	return (UserProcess)Lib.constructObject(Machine.getProcessClassName());
-    }
+	public static UserProcess newUserProcess()
+	{
+		return (UserProcess)Lib.constructObject(Machine.getProcessClassName());
+	}
 
     /**
      * Execute the specified program with the specified arguments. Attempts to
@@ -346,7 +356,274 @@ public class UserProcess {
 	return 0;
     }
 
+    /**
+     * Handle the creat() system call. 
+     */
+    private int handleCreate()
+    {
+    	boolean createFileIfDoesNotExist = true;
+    	int returnValue = 0;
 
+    	Processor processor = Machine.processor();
+    	int vaddr = processor.readRegister(4);
+
+    	byte[] data = new byte[256];
+    	int fileSize = readVirtualMemory(vaddr,data);
+    	String filename = readVirtualMemoryString(vaddr, fileSize);
+
+    	FileSystem fileSystem = Machine.stubFileSystem();
+
+    	//Lib.assertTrue(fileSystem == null, "UserProcess::handleCreate: No FileSystem");
+    	if (fileSystem == null)
+    	{
+			String errorMsg = "UserProcess::handleCreate: No FileSystem, returning -1";
+			Lib.debug(dbgProcess, errorMsg);
+    		returnValue = -1;
+    	}
+    	else
+    	{
+    		OpenFile openedFile = 
+    			fileSystem.open(filename, createFileIfDoesNotExist);
+    		
+    		if (openedFile == null)
+    		{
+    			String errorMsg = "UserProcess::handleCreate: File could not be opened, returning -1";
+    			Lib.debug(dbgProcess, errorMsg);
+        		returnValue = -1;
+    		}
+    		else
+    		{
+    			try
+    			{
+    				returnValue = fileDescriptorManager.insertFileDescriptor(filename);
+        		
+    				String outputMsg = "handleCreate created file: " + filename + " with file descriptor: " 
+    				+ returnValue;
+        			Lib.debug(dbgProcess, outputMsg);
+        			
+        			openedFileMap.put(filename, openedFile);
+    			}
+    			catch(EmptyStackException e)
+    			{
+    				String errorMsg = e.toString() + "(returning -1)";
+    				Lib.debug(dbgProcess, errorMsg);
+    				returnValue = -1;
+    			}
+    			finally
+    			{
+    			}
+    		}
+    	}
+    	
+    	return returnValue;
+    }
+
+    /**
+     * Handle the open() system call. 
+     */
+    private int handleOpen()
+    {
+    	boolean createFileIfDoesNotExist = true;
+    	int returnValue = 0;
+
+    	Processor processor = Machine.processor();
+    	int vaddr = processor.readRegister(4);
+    	//System.out.printf("address read = %d\n", vaddr);
+
+    	byte[] data = new byte[256];
+    	int fileSize = readVirtualMemory(vaddr,data);
+    	String filename = readVirtualMemoryString(vaddr, fileSize);
+
+    	FileSystem fileSystem = Machine.stubFileSystem();
+
+    	//Lib.assertTrue(fileSystem == null, "UserProcess::handleOpen: No FileSystem");
+    	if (fileSystem == null)
+    	{
+    		String errorMsg = "UserProcess::handleOpen: No FileSystem, returning -1";
+			Lib.debug(dbgProcess, errorMsg);
+    		returnValue = -1;
+    	}
+    	else
+    	{
+    		OpenFile openedFile = 
+    			fileSystem.open(filename, createFileIfDoesNotExist);
+    		
+    		if (openedFile == null)
+    		{
+    			String errorMsg = "UserProcess::handleOpen: File could not be opened, returning -1";
+    			Lib.debug(dbgProcess, errorMsg);
+        		returnValue = -1;
+    		}
+    		else
+    		{
+    			try
+    			{
+    				returnValue = fileDescriptorManager.insertFileDescriptor(filename);
+        		
+    				String outputMsg = "handleOpen opened file: " + filename + " with file descriptor: " 
+    				+ returnValue;
+        			Lib.debug(dbgProcess, outputMsg);
+        			
+        			openedFileMap.put(filename, openedFile);
+    			}
+    			catch(EmptyStackException e)
+    			{
+    				String errorMsg = e.toString() + "(returning -1)";
+    				Lib.debug(dbgProcess, errorMsg);
+    				returnValue = -1;
+    			}
+    			finally
+    			{
+    			}
+    		}
+    	}
+
+    	return returnValue;
+    }
+    
+    /**
+     * Handle the read() system call. 
+     */
+    private int handleRead()
+    {
+    	Processor processor = Machine.processor();
+    	int fileDescriptor = processor.readRegister(4);
+    	int bufferValue = processor.readRegister(5);
+    	int length= processor.readRegister(6);
+    	//System.out.printf("address read = %d\n", vaddr);
+    	int returnValue = 0;
+
+    	byte[] buffer = new byte[length];
+    	int transferedBytes = readVirtualMemory(bufferValue,buffer);
+    	if (transferedBytes != length)
+    	{
+    		//I think there are cases when this is okay, and cases where it is an error, see description in syscall
+    		//if this shouldn't happen, the try below should be in an else
+    	}
+
+    	try
+    	{
+    		String filename = fileDescriptorManager.getFilename(fileDescriptor);
+    		OpenFile openedFile = openedFileMap.get(filename);
+
+    		if (openedFile == null)
+    		{
+    			Lib.debug(dbgProcess, "UserProcess::handleRead: File not opened");
+    			returnValue = -1;
+    		}
+    		else
+    		{
+    			int offset = 0;//temp fix, may need to look into
+    			int numberOfBytesRead = openedFile.read(buffer, offset, length);
+    			if (numberOfBytesRead == -1)
+    			{
+    				returnValue = -1;
+    			}
+    			else if (numberOfBytesRead != length)
+    			{
+    				//may have problem, maybe not
+    				//returnValue = numberOfBytesRead
+    				//or
+    				//returnValue = -1;
+    			}
+    			else
+    			{
+    				String outputMsg = "Read " + numberOfBytesRead + " bytes from file: " + 
+    				filename + "with file descriptor: " + fileDescriptor + ", in handleRead";
+    				Lib.debug(dbgProcess, outputMsg);
+    			}
+    		}
+    	}
+    	catch(Exception e)
+    	{
+    		Lib.debug(dbgProcess, e.toString());
+    		returnValue = -1;
+    	}
+    	finally
+    	{
+    	}
+    	return returnValue;
+    }
+    
+    /**
+     * Handle the write() system call. 
+     */
+    private int handleWrite()
+    {
+    	//basically the same as write, except call openedFile.write(buffer, offset, length);
+    	Lib.assertNotReached("Need to implement write system call");
+    	return 0;
+    } 
+
+    /**
+     * Handle the close() system call. 
+     */
+    private int handleClose()
+    {
+    	int returnValue = 0;
+    	String filename;
+
+    	Processor processor = Machine.processor();
+    	int fileDescriptor = processor.readRegister(4);
+
+    	//DONT SEEM TO NEED ALL THIS TO READ AN INT
+    	//byte[] data = new byte[256];
+    	//int fileSize = readVirtualMemory(vaddr,data);
+    	//String fileDescriptorAsString = readVirtualMemoryString(vaddr, fileSize);
+    	//int fileDescriptor = Integer.parseInt(fileDescriptorAsString.trim());
+
+
+    	try
+    	{
+    		filename = fileDescriptorManager.getFilename(fileDescriptor);
+    		
+    		//BEGIN: added late on 10/15/2009
+    		OpenFile openedFile = openedFileMap.get(filename);
+    		if (openedFile == null)
+    		{
+    			Lib.debug(dbgProcess, "UserProcess::handleRead: File not opened");
+    			returnValue = -1;
+    		}
+    		else
+    		{
+    			//look if this file is used somewhere else write being done?
+    			
+    			openedFile.close();
+    			//this close releases any resources associated with the file
+    			openedFileMap.remove(filename);
+
+        		fileDescriptorManager.removeFileDescriptor(fileDescriptor);
+    		//END:  added late on 10/15/2009
+
+        		String outputMsg = "handleClose closed file: " + filename + " with file descriptor: " 
+				+ fileDescriptor;
+    			Lib.debug(dbgProcess, outputMsg);
+    		}
+
+    	}
+    	catch(Exception e)
+    	{
+			Lib.debug(dbgProcess, e.toString());
+    		returnValue = -1;
+    	}
+    	finally
+    	{
+    	}
+    	
+		String returnMsg = "handleClose returning (0=success, -1=error): " + returnValue;
+		Lib.debug(dbgProcess, returnMsg);
+    	return returnValue;
+    } 
+    
+    /**
+     * Handle the unlink() system call. 
+     */
+    private int handleUnlink()
+    {
+    	Lib.assertNotReached("Need to implement unlink system call");
+    	return 0;
+    } 
+    
     private static final int
         syscallHalt = 0,
 	syscallExit = 1,
@@ -391,6 +668,18 @@ public class UserProcess {
 	switch (syscall) {
 	case syscallHalt:
 	    return handleHalt();
+	case syscallCreate:
+	    return handleCreate();
+	case syscallOpen:
+	    return handleOpen();
+	case syscallRead:
+	    return handleRead();
+	case syscallWrite:
+	    return handleWrite();
+	case syscallClose:
+	    return handleClose();
+	case syscallUnlink:
+	    return handleUnlink();
 
 
 	default:
@@ -408,26 +697,28 @@ public class UserProcess {
      *
      * @param	cause	the user exception that occurred.
      */
-    public void handleException(int cause) {
-	Processor processor = Machine.processor();
+    public void handleException(int cause)
+    {
+    	Processor processor = Machine.processor();
 
-	switch (cause) {
-	case Processor.exceptionSyscall:
-	    int result = handleSyscall(processor.readRegister(Processor.regV0),
-				       processor.readRegister(Processor.regA0),
-				       processor.readRegister(Processor.regA1),
-				       processor.readRegister(Processor.regA2),
-				       processor.readRegister(Processor.regA3)
-				       );
-	    processor.writeRegister(Processor.regV0, result);
-	    processor.advancePC();
-	    break;				       
-				       
-	default:
-	    Lib.debug(dbgProcess, "Unexpected exception: " +
-		      Processor.exceptionNames[cause]);
-	    Lib.assertNotReached("Unexpected exception");
-	}
+    	switch (cause)
+    	{
+    	case Processor.exceptionSyscall:
+    		int result = handleSyscall(processor.readRegister(Processor.regV0),
+    				processor.readRegister(Processor.regA0),
+    				processor.readRegister(Processor.regA1),
+    				processor.readRegister(Processor.regA2),
+    				processor.readRegister(Processor.regA3)
+    		);
+    		processor.writeRegister(Processor.regV0, result);
+    		processor.advancePC();
+    		break;				       
+
+    	default:
+    		Lib.debug(dbgProcess, "Unexpected exception: " +
+    				Processor.exceptionNames[cause]);
+    		Lib.assertNotReached("Unexpected exception");
+    	}
     }
 
     /** The program being run by this process. */
@@ -443,7 +734,90 @@ public class UserProcess {
     
     private int initialPC, initialSP;
     private int argc, argv;
+    
+    private FileDescriptorManager fileDescriptorManager;
 	
     private static final int pageSize = Processor.pageSize;
     private static final char dbgProcess = 'a';
+    
+    private Map<String,OpenFile> openedFileMap;
+    
+    private static class FileDescriptorManager
+    {
+    	public FileDescriptorManager() 
+    	{
+    		fileDescriptorList = new String[listLength];
+    		indexStack = new Stack<Integer>();
+    		
+    		//descriptors 0 and 1 are already used by standard input/output?
+    		for (int i = listLength-1; i >=2; i--)
+    		{
+    			fileDescriptorList[i] = null;
+    			indexStack.push(new Integer(i));
+    		}
+    	}
+
+    	public String getFilename(int fileDescriptor)
+    	{
+    		String filename = fileDescriptorList[fileDescriptor];// TODO Auto-generated method stub
+    		return filename;
+    	}
+    	
+    	public int insertFileDescriptor(String filename) throws EmptyStackException
+    	{
+    		int index = indexStack.pop();
+    		fileDescriptorList[index] = filename;
+    		return index;
+    	}
+    	
+    	public void removeFileDescriptor(int fileDescriptor) throws EmptyStackException, ArrayIndexOutOfBoundsException
+    	{
+    		fileDescriptorList[fileDescriptor] = null;
+    		indexStack.push(fileDescriptor);
+    	}
+
+    	private String[] fileDescriptorList;
+    	private Stack<Integer> indexStack;
+
+    	private final int listLength = 16;
+    }
+    /*
+    private static class FileDescriptorManager
+    {
+    	public FileDescriptorManager() 
+    	{
+    		fileDescriptorList = new String[listLength];
+    		indexStack = new Stack<Integer>();
+    		for (int i = listLength-1; i >=0; i--)
+    		{
+    			fileDescriptorList[i] = null;
+    			indexStack.push(new Integer(i));
+    		}
+    	}
+
+    	public String getFilename(int fileDescriptor)
+    	{
+    		String filename = fileDescriptorList[fileDescriptor];// TODO Auto-generated method stub
+    		return filename;
+    	}
+    	
+    	public int insertFileDescriptor(String filename) throws EmptyStackException
+    	{
+    		int index = indexStack.pop();
+    		fileDescriptorList[index] = filename;
+    		return index;
+    	}
+    	
+    	public void removeFileDescriptor(int fileDescriptor) throws EmptyStackException, ArrayIndexOutOfBoundsException
+    	{
+    		fileDescriptorList[fileDescriptor] = null;
+    		indexStack.push(fileDescriptor);
+    	}
+
+    	private String[] fileDescriptorList;
+    	private Stack<Integer> indexStack;
+
+    	private final int listLength = 16;
+    }
+    */
 }
