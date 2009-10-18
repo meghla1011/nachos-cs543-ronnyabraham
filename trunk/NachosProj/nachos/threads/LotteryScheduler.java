@@ -6,6 +6,8 @@ import nachos.threads.PriorityScheduler.ThreadState;
 
 import java.util.LinkedList;
 import java.util.ListIterator;
+import java.util.NavigableSet;
+import java.util.Random;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.HashSet;
@@ -226,9 +228,22 @@ public class LotteryScheduler extends PriorityScheduler {
      *					to the owning thread.
      * @return	a new lottery thread queue.
      */
-    public ThreadQueue newThreadQueue(boolean transferPriority) {
-	// implement me
-	return null;
+    public ThreadQueue newThreadQueue(boolean transferPriority)
+    {
+    	return new LotteryPriorityQueue(transferPriority);
+    }
+
+    /*
+     * getThreadState
+     * # HW2 Q4
+     * creates a new LotteryThreadState
+     */
+    protected ThreadState getThreadState(KThread thread)
+    {
+    	if (thread.schedulingState == null)
+    	    thread.schedulingState = new LotteryThreadState(thread);
+
+    	return (ThreadState) thread.schedulingState;
     }
     
     
@@ -247,153 +262,164 @@ public class LotteryScheduler extends PriorityScheduler {
     
     private static final char dbgThread = 't';
     
-    ///////////////////////////////////////////////////////////////////////////
-    protected class LotteryQueue extends ThreadQueue 
+    protected class LotteryPriorityQueue extends PriorityQueue
     {
-		LotteryQueue(boolean transferPriority)
-		{
-    	    this.transferPriority = transferPriority;
-    	}
-		
-		public  boolean transferPriority;
 
-		public void acquire(KThread thread)
+		LotteryPriorityQueue(boolean transferPriority)
 		{
-			// TODO Auto-generated method stub	
+			super(transferPriority);
 		}
-
+		
+		// This method is different from the pickNextThread
+		// since it will modify the state of the threads waiting
+		// in the data structure iQueue. 
 		public KThread nextThread()
 		{
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		public void print()
-		{
-			// TODO Auto-generated method stub
-			
-		}
-
-		public void waitForAccess(KThread thread) 
-		{
-			// TODO Auto-generated method stub
-			
+			//runningThread is the thread that is hold the current lock 
+			//since it has finished the nextThread will get the
+			//lock and will start to run
+			if(runningThread != null)
+			{
+				LotteryThreadState state = (LotteryThreadState) runningThread;
+				state.listOfWaitingThreads.clear();
+				
+				if(runningThread.inheritedPriority)
+				{
+					runningThread.setPriority(runningThread.oldPriority);
+					runningThread.inheritedPriority = false;
+				}
+				runningThread = null;
+			}
+		    Lib.assertTrue(Machine.interrupt().disabled());
+		    
+		    ThreadState nThread = pickNextThread();
+		    if(nThread != null)
+		    {
+		    	iQueue.remove(nThread);
+		    	nThread.acquire(this);
+		    	return nThread.thread;
+		    }
+		    
+		    return null;
 		}
 		
-		public LinkedList<LotteryThreadState> waitingThreads = new LinkedList<LotteryThreadState>();
-		public LotteryThreadState runningThread;
+		/**
+		 * Return the next thread that <tt>nextThread()</tt> would return,
+		 * without modifying the state of this queue.
+		 *
+		 * @return	the next thread that <tt>nextThread()</tt> would
+		 *		return.
+		 */
+		protected ThreadState pickNextThread()
+		{
+			if(iQueue.isEmpty())
+			{
+				return null;
+			}
+			return draw();
+		}
+	
+		/*
+		 * # HW2 Q4
+		 * draw
+		 * Draw a ticket from all the waiting threads and return the winner
+		 * Here is how the draw works:
+		 * A number is drawn  between 1 and sum(i) where i is all the priorities
+		 * (this is the total number of tickets held by all threads)
+		 * After the number was drawn, we return the winning thread holding the 
+		 * winner ticket
+		 */
+		
+		private LotteryThreadState draw()
+		{
+			int sumPriorities = 0;
+			
+			ListIterator<LotteryThreadState> iter = iQueue.listIterator();
+			while(iter.hasNext())
+			{
+				LotteryThreadState state = iter.next();
+				sumPriorities += state.priority;
+			}
+			// generate a random number between 1 and sumPriorities
+			Random generator = new Random();
+			int winner = generator.nextInt(sumPriorities); // 0 based
+			winner++;
+			
+			int lowerBound = 1;
+			
+			iter = iQueue.listIterator();
+			while(iter.hasNext())
+			{
+				LotteryThreadState state = iter.next();
+				int upperBound = lowerBound + state.priority;
+				if(winner >= lowerBound && winner < upperBound)
+				{
+					// thread with winning ticket jumps ecstatically
+					return state;
+				}
+				lowerBound = upperBound;
+			}
+			return null;
+		}
+		
+		LinkedList<LotteryThreadState> iQueue = new LinkedList<LotteryThreadState>();
     }
-
     
-    ///////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////
     
-    protected class LotteryThreadState
+    
+    /*
+     * LotteryThreadState
+     */
+    protected class LotteryThreadState extends ThreadState
     {
-    	/**
-    	 * Allocate a new <tt>ThreadState</tt> object and associate it with the
-    	 * specified thread.
-    	 *
-    	 * @param	thread	the thread this state belongs to.
-    	 */
-    	public LotteryThreadState(KThread thread)
-    	{
-    		this.thread = thread;
-    	    setPriority(priorityDefault);
-    	}
-    	
-    	/**
-    	 * Return the priority of the associated thread.
-    	 *
-    	 * @return	the priority of the associated thread.
-    	 */
-    	public int getPriority()
-    	{
-    	    return priority;
-    	}
-    	
-    	/**
-    	 * Return the effective priority of the associated thread.
-    	 *
-    	 * @return	the effective priority of the associated thread.
-    	 */
-    	public int getEffectivePriority()
-    	{
-    		
-    	    return priority;
-    	}
 
-    	/**
-    	 * Set the priority of the associated thread to the specified value.
-    	 *
-    	 * @param	priority	the new priority.
-    	 */
-    	public void setPriority(int priority)
-    	{
-    	    if(this.priority == priority)
-    	    {
-    	    	return;
-    	    }
-    	    if(priority <= priorityMinimum)
-    	    {
-    	    	this.priority = priorityMinimum;
-    	    }
-    	    else if(priority >= priorityMaximum)
-    	    {
-    	    	this.priority = priorityMaximum;
-    	    }
-    	    else
-    	    {
-    	    	this.priority = priority;
-    	    }   
-    	}
-    	
-    	/**
-    	 * Called when <tt>waitForAccess(thread)</tt> (where <tt>thread</tt> is
-    	 * the associated thread) is invoked on the specified priority queue.
-    	 * The associated thread is therefore waiting for access to the
-    	 * resource guarded by <tt>waitQueue</tt>. This method is only called
-    	 * if the associated thread cannot immediately obtain access.
-    	 *
-    	 * @param	waitQueue	the queue that the associated thread is
-    	 *				now waiting on.
-    	 *
-    	 * @see	nachos.threads.ThreadQueue#waitForAccess
-    	 */
-    	public void waitForAccess(LotteryQueue waitQueue)
-    	{
-    		//add myself to the PriorityQueue
-    		//waitQueue.waitingThreads.add(this);
-    		// also add myself to the donating threads
-    		
-    		
-    		
-    	}
-
-    	/**
-    	 * Called when the associated thread has acquired access to whatever is
-    	 * guarded by <tt>waitQueue</tt>. This can occur either as a result of
-    	 * <tt>acquire(thread)</tt> being invoked on <tt>waitQueue</tt> (where
-    	 * <tt>thread</tt> is the associated thread), or as a result of
-    	 * <tt>nextThread()</tt> being invoked on <tt>waitQueue</tt>.
-    	 *
-    	 * @see	nachos.threads.ThreadQueue#acquire
-    	 * @see	nachos.threads.ThreadQueue#nextThread
-    	 */
-    	public void acquire(LotteryQueue waitQueue)
-    	{
-    	    if(waitQueue.transferPriority)
-    	    {
-    	    	waitQueue.runningThread = this;
-    	    }
-    	}	
-
-    	/** The thread with which this object is associated. */	   
-    	protected KThread thread;
-    	/** The priority of the associated thread. */
-    	protected int priority;
-    	
+		public LotteryThreadState(KThread thread)
+		{
+			super(thread);
+		}
+		
+		
+		public int getEffectivePriority()
+		{
+			// # HW2 Q4
+			// The effective priority of a thread is how many
+			// tickets it holds + any tickets from other waiting threads
+			if(listOfWaitingThreads.size() > 0)
+			{
+				// take of my hat, iterate over all threads waiting 
+				// on the priority Q and collect all the donations
+				int donation = 0;
+				ListIterator<LotteryThreadState> iter = listOfWaitingThreads.listIterator();
+				while(iter.hasNext())
+				{
+					LotteryThreadState state = iter.next();
+					donation += state.priority;
+				}
+				oldPriority = priority;
+				priority += donation;
+				inheritedPriority = true;
+			}
+		    return priority;
+		}
+		
+		public void waitForAccess(PriorityQueue waitQueue)
+		{
+			LotteryPriorityQueue lotteryQ = (LotteryPriorityQueue) waitQueue;
+			// # HW2 Q4 add myself to the LotteryPriorityQueue 
+			lotteryQ.iQueue.add(this);
+			
+			// # HW2 Q4
+	    	// donate my priority to the thread currently holding the queue
+	    	// - done by adding myself to the running thread listOfHPThreads
+		    if(waitQueue.transferPriority)
+		    {
+		    	
+		    	LotteryThreadState state = (LotteryThreadState) waitQueue.runningThread;
+		    	state.listOfWaitingThreads.add(this);
+		    }
+		}
+		
+		public LinkedList<LotteryThreadState> listOfWaitingThreads = new LinkedList<LotteryThreadState>();
     }
-        ///////////////////////////////////////////////////////////////////////
     
 }
