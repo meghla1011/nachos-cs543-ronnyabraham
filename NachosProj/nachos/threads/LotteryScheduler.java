@@ -357,19 +357,41 @@ public class LotteryScheduler extends PriorityScheduler {
 			while(iter.hasNext())
 			{
 				LotteryThreadState state = iter.next();
-				sumPriorities += state.priority;
+				sumPriorities += state.oldPriority;
 			}
 			// generate a random number between 1 and sumPriorities
 			Random generator = new Random();
 			int winner = generator.nextInt(sumPriorities); // 0 based
 			winner++;
 			
-			int lowerBound = 1;
+			// get the participants of the lottery, donating threads have 0 tickets
+			// so they get pulled out of the lottery
+			LinkedList<LotteryThreadState> zeroTicketThreads = new LinkedList<LotteryThreadState>();
 			
 			iter = iQueue.listIterator();
 			while(iter.hasNext())
 			{
 				LotteryThreadState state = iter.next();
+				ListIterator<LotteryThreadState> iter2 = state.listOfWaitingThreads.listIterator();
+				while(iter2.hasNext())
+				{
+					LotteryThreadState nonParticipatingThread = iter2.next();
+					zeroTicketThreads.add(nonParticipatingThread);
+				}
+			}
+			
+			int lowerBound = 1;
+			
+			// draw  ticket, remember that waiting threads have donated all their tickets
+			iter = iQueue.listIterator();
+			while(iter.hasNext())
+			{
+				LotteryThreadState state = iter.next();
+				if(zeroTicketThreads.contains(state))
+				{
+					// threads with no tickets do not participate in the lottery
+					continue;
+				}
 				int upperBound = lowerBound + state.priority;
 				if(winner >= lowerBound && winner < upperBound)
 				{
@@ -398,6 +420,11 @@ public class LotteryScheduler extends PriorityScheduler {
 			oldPriority = priority;
 		}
 		
+		public void setPriority(int priority)
+		{
+			super.setPriority(priority);
+			oldPriority = priority;
+		}
 		
 		public int getEffectivePriority()
 		{
