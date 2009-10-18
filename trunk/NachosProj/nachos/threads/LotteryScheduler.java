@@ -425,6 +425,7 @@ public class LotteryScheduler extends PriorityScheduler {
 		
 		public void waitForAccess(PriorityQueue waitQueue)
 		{
+			getEffectivePriority();
 			LotteryPriorityQueue lotteryQ = (LotteryPriorityQueue) waitQueue;
 			// # HW2 Q4 add myself to the LotteryPriorityQueue 
 			lotteryQ.iQueue.add(this);
@@ -434,15 +435,12 @@ public class LotteryScheduler extends PriorityScheduler {
 	    	// - done by adding myself to the running thread listOfHPThreads
 		    if(waitQueue.transferPriority)
 		    {
-		    	
 		    	LotteryThreadState state = (LotteryThreadState) waitQueue.runningThread;
 		    	state.listOfWaitingThreads.add(this);
 		    }
 		}
 		
 		public LinkedList<LotteryThreadState> listOfWaitingThreads = new LinkedList<LotteryThreadState>();
-		// need to maintain this for debug purposes
-		public int effectiveP;
     }
     
 }
