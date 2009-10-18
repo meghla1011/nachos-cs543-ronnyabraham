@@ -7,7 +7,30 @@ open.c:
 	-opens a file that does not exist
 	-closes the first open file
 	-closes the second open file
+
+openClose.c
+	-opens a file
+	-close the file
 	
 createClose.c:
 	-creates a test file
 	-closes the file using the file descriptor
+
+read.c
+	-opens a file to read
+	-read the file to buffer
+	-closes the file read
+
+write.c
+	-opens a file to write to
+	-writes to buffer
+	-closes the file read
+
+unlink
+	-calls unlink on file
+
+
+readStream.c
+	-reads from standard input
+
+
