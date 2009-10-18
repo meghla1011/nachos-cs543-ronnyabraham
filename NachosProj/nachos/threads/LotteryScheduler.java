@@ -44,9 +44,10 @@ public class LotteryScheduler extends PriorityScheduler {
     
     public static void selfTest()
     {
-    	selfTest1();
-    	//selfTest2();
-    	System.out.println("bla");
+    	System.out.println("LotteryScheduler.selfTest1() - testing scheduler");
+    	//selfTest1();
+    	System.out.println("LotteryScheduler.selfTest1() - testing scheduler - priority donation");
+    	selfTest2();
     }
     
     /*
@@ -140,6 +141,7 @@ public class LotteryScheduler extends PriorityScheduler {
         t2.join();
         t3.join();
         t4.join();
+        System.out.println("LotteryScheduler.selfTest1() - done priority donation test");
     }
     
     private static class T1 implements Runnable
@@ -154,18 +156,22 @@ public class LotteryScheduler extends PriorityScheduler {
     		// acquire the lock, once this is done t2 and t3 will be
     		// waiting on this lock and donating their priority to t1
     		lk.acquire();
-    		// signal the main thread that it may start forking t2, t3 and t4
-    		sema4.V();
     		for(int i = 0; i < 100; ++i)
     		{
-    			Lib.debug(dbgThread, "=##= T1 says: tick " + i);
-    			// log the effective priority of this thread
-    			// getting the effective priority must be done with disabled interrupts
-    			boolean oldInterrupStatus = Machine.interrupt().disable();
-    	        int effectifeP = ThreadedKernel.scheduler.getEffectivePriority();
-    			Machine.interrupt().restore(oldInterrupStatus);
-    			Lib.debug(dbgThread, "=##= My effective priority is " + effectifeP);
-    			if(i == 50)
+    			// log the priority of this thread
+    			// getting the priority must be done with disabled interrupts
+    			//boolean oldInterrupStatus = Machine.interrupt().disable();
+    			//int p = ThreadedKernel.scheduler.getEffectivePriority();
+    			//Machine.interrupt().restore(oldInterrupStatus);
+    			//Lib.debug(dbgThread, "=##= T1 says: tick " + i + " --->> my effective priority is " + p);
+    			
+    			if(i == 19)
+    			{
+    				// signal the main thread that it may start forking t2, t3 and t4
+    	    		sema4.V();
+    			}
+    			
+    			if(i == 49)
     			{
     				// release the lock after 50 ticks
     				// this will show the change in effective priority
@@ -250,17 +256,30 @@ public class LotteryScheduler extends PriorityScheduler {
     /**
      * The default priority for a new thread. Do not change this value.
      */
-    public static final int priorityDefault = 1;
+    public static final int lotPriorityDefault = 1;
     /**
      * The minimum priority that a thread can have. Do not change this value.
      */
-    public static final int priorityMinimum = 1;
+    public static final int lotPriorityMinimum = 1;
     /**
      * The maximum priority that a thread can have. Do not change this value.
      */
-    public static final int priorityMaximum = Integer.MAX_VALUE; 
+    public static final int lotPriorityMaximum = Integer.MAX_VALUE; 
     
     private static final char dbgThread = 't';
+    
+    protected int getPriorityDefault()
+    {
+    	return lotPriorityDefault;
+    }
+    protected int getPriorityMin()
+    {
+    	return lotPriorityMinimum;
+    }
+    protected int getPriorityMax()
+    {
+    	return lotPriorityMaximum;
+    }
     
     protected class LotteryPriorityQueue extends PriorityQueue
     {
@@ -376,6 +395,7 @@ public class LotteryScheduler extends PriorityScheduler {
 		public LotteryThreadState(KThread thread)
 		{
 			super(thread);
+			oldPriority = priority;
 		}
 		
 		
@@ -395,8 +415,9 @@ public class LotteryScheduler extends PriorityScheduler {
 					LotteryThreadState state = iter.next();
 					donation += state.priority;
 				}
+				// track effectiveP only for the first time
 				oldPriority = priority;
-				priority += donation;
+				priority = oldPriority + donation;
 				inheritedPriority = true;
 			}
 		    return priority;
@@ -420,6 +441,8 @@ public class LotteryScheduler extends PriorityScheduler {
 		}
 		
 		public LinkedList<LotteryThreadState> listOfWaitingThreads = new LinkedList<LotteryThreadState>();
+		// need to maintain this for debug purposes
+		public int effectiveP;
     }
     
 }
