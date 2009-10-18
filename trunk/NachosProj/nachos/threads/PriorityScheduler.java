@@ -55,15 +55,17 @@ public class PriorityScheduler extends Scheduler {
 
     public int getEffectivePriority(KThread thread) {
 	Lib.assertTrue(Machine.interrupt().disabled());
-		       
+	
+	Lib.debug(dbgThread, "123456");
+	
 	return getThreadState(thread).getEffectivePriority();
     }
 
     public void setPriority(KThread thread, int priority) {
 	Lib.assertTrue(Machine.interrupt().disabled());
 		       
-	Lib.assertTrue(priority >= priorityMinimum &&
-		   priority <= priorityMaximum);
+	Lib.assertTrue(priority >= getPriorityMin() &&
+		   priority <= getPriorityMax());
 	
 	getThreadState(thread).setPriority(priority);
     }
@@ -74,7 +76,7 @@ public class PriorityScheduler extends Scheduler {
 	KThread thread = KThread.currentThread();
 
 	int priority = getPriority(thread);
-	if (priority == priorityMaximum)
+	if (priority == getPriorityMax())
 	    return false;
 
 	setPriority(thread, priority+1);
@@ -89,7 +91,7 @@ public class PriorityScheduler extends Scheduler {
 	KThread thread = KThread.currentThread();
 
 	int priority = getPriority(thread);
-	if (priority == priorityMinimum)
+	if (priority == getPriorityMin())
 	    return false;
 
 	setPriority(thread, priority-1);
@@ -102,6 +104,20 @@ public class PriorityScheduler extends Scheduler {
      * The default priority for a new thread. Do not change this value.
      */
     public static final int priorityDefault = 1;
+    
+    protected int getPriorityDefault()
+    {
+    	return priorityDefault;
+    }
+    protected int getPriorityMin()
+    {
+    	return priorityMinimum;
+    }
+    protected int getPriorityMax()
+    {
+    	return priorityMaximum;
+    }
+    
     /**
      * The minimum priority that a thread can have. Do not change this value.
      */
@@ -431,7 +447,7 @@ public class PriorityScheduler extends Scheduler {
 	public ThreadState(KThread thread) {
 	    this.thread = thread;
 	    
-	    setPriority(priorityDefault);
+	    setPriority(getPriorityDefault());
 	}
 
 	/**
@@ -478,13 +494,13 @@ public class PriorityScheduler extends Scheduler {
 	    if (this.priority == priority)
 		return;
 	    
-	    if(priority <= priorityMinimum)
+	    if(priority <= getPriorityMin())
 	    {
-	    	this.priority = priorityMinimum;
+	    	this.priority = getPriorityMin();
 	    }
-	    else if(priority >= priorityMaximum)
+	    else if(priority >= getPriorityMax())
 	    {
-	    	this.priority = priorityMaximum;
+	    	this.priority = getPriorityMax();
 	    }
 	    else
 	    {
