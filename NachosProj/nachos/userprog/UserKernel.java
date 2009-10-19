@@ -42,6 +42,7 @@ public class UserKernel extends ThreadedKernel {
 
 	do {
 	    c = (char) console.readByte(true);
+	    //System.out.println("reading the char "+c);
 	    console.writeByte(c);
 	}
 	while (c != 'q');
@@ -95,6 +96,7 @@ public class UserKernel extends ThreadedKernel {
 	UserProcess process = UserProcess.newUserProcess();
 	
 	String shellProgram = Machine.getShellProgramName();	
+	System.out.println("shell program name is "+shellProgram);
 	Lib.assertTrue(process.execute(shellProgram, new String[] { }));
 
 	KThread.currentThread().finish();
