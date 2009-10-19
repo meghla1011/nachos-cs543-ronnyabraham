@@ -11,6 +11,7 @@ import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
+import java.util.Vector;
 
 /**
  * Encapsulates the state of a user process that is not contained in its
@@ -350,7 +351,7 @@ public class UserProcess {
      * Handle the halt() system call. 
      */
     private int handleHalt() {
-
+    
 	Machine.halt();
 	
 	Lib.assertNotReached("Machine.halt() did not halt machine!");
@@ -811,13 +812,74 @@ public class UserProcess {
 	    return handleClose();
 	case syscallUnlink:
 	    return handleUnlink();
-
+	case syscallExec:
+		System.out.println("system call syscallExec");
+		return handleExec(a0,a1,a2);
+	case syscallJoin:
+		return handleJoin();
+	case syscallExit:
+		return handleExit();
 
 	default:
 	    Lib.debug(dbgProcess, "Unknown syscall " + syscall);
 	    Lib.assertNotReached("Unknown system call!");
 	}
 	return 0;
+    }
+    
+    //This function implements the handleExec system call 
+    
+    private int handleExec(int a0,int a1,int a2)
+    {
+        int returnValue = -1;
+        // name of the coff file to execute
+		String file = readVirtualMemoryString( a0, 256 );
+        System.out.println("File name obtained "+ file);
+		// If filename does not end with coff throw an error
+		if ( ! file.endsWith(".coff") )
+			return returnValue;
+
+		if ( a1 < 0 )
+			return returnValue;
+
+		// Grab the data for each of the arguments in a2
+		String arguments [] = new String [a1];
+
+		byte[] data = new byte [a1 * 4];
+		readVirtualMemory(a2, data, 0, a1 * 4);
+
+		for ( int i = 0; i < a1; i++ ) 
+			arguments [i] = readVirtualMemoryString( Lib.bytesToInt( data, i * 4, 4 ), 256 );
+
+		// Create the new process
+		UserProcess newChild = newUserProcess();
+
+		// The child process that are launched by parent is added to a vector
+		childprocessList.add(newChild.processId);
+
+		// Return process Id of new child process
+		if ( newChild.execute(file, arguments) )
+			return newChild.processId;
+		
+        return returnValue;
+    }
+    
+    //This function implements the handleJoin system call 
+    
+    private int handleJoin()
+    {
+        int returnValue = 0;
+        //todo BR need to do the implementation 
+        return returnValue;
+    }
+    
+    //This function implements the handleExit system call 
+    
+    private int handleExit()
+    {
+        int returnValue = 0;
+        //todo BR need to do the implementation 
+        return returnValue;
     }
 
     /**
@@ -870,8 +932,8 @@ public class UserProcess {
 	
     private static final int pageSize = Processor.pageSize;
     private static final char dbgProcess = 'a';
-    
-    
+    private Vector<Integer> childprocessList = new Vector<Integer>();
+    private int processId =-1;
     private static class FileDescriptorOpenFileManager
     {
     	public FileDescriptorOpenFileManager() 
