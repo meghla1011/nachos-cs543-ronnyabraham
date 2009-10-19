@@ -814,7 +814,9 @@ public class UserProcess {
 	    return handleUnlink();
 	case syscallExec:
 		System.out.println("system call syscallExec");
-		return handleExec(a0,a1,a2);
+		//todo will uncomment this line after I get this working Balaji
+		//return handleExec(a0,a1,a2);
+		return -1;
 	case syscallJoin:
 		return handleJoin();
 	case syscallExit:
