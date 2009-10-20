@@ -1,5 +1,5 @@
-/* read.c
- *	Opens a preexisting file, reads from it and closes it.
+/* writeStream.c
+ *	Write output to console.
  *
  * 	NOTE: for some reason, user programs with global data structures 
  *	sometimes haven't worked in the Nachos environment.  So be careful
@@ -13,18 +13,14 @@
 int
 main()
 {
-  int fileDescriptor = 0;
+  int fileDescriptor = 1;
   int success = 0;
-  int bytesRead = 0;
+  int bytesWritten = 0;
+  char *c = ("If you see this, it appears your write to standard output is working");
 
-  //syscall.h has create misspelled as creat
-  fileDescriptor = open("TestReadFile.log");
+  unsigned int bytesToWrite = strlen(c);
 
-  void* tempBuffer[100];
-  int bytesToRead = 391;
-
-  bytesRead = read(fileDescriptor, tempBuffer, bytesToRead);
-  success = close(fileDescriptor);
+  bytesWritten = write(fileDescriptor, (void*)c, bytesToWrite);
 
   halt();
   /* not reached */

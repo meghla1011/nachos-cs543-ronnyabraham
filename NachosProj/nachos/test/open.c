@@ -1,7 +1,5 @@
 /* open.c
- *	Simple program to test whether running a user program works.
- *	
- *	Just do an open on a filename specified.
+ *	Creates, closes, and tries to open a filename.
  *
  * 	NOTE: for some reason, user programs with global data structures 
  *	sometimes haven't worked in the Nachos environment.  So be careful
@@ -15,23 +13,23 @@
 int
 main()
 {
-	int fileDescriptor1 = 0;
-	int fileDescriptor2 = 0;
-	int success = 0;
+  int fileDescriptor1 = 0;
+  int fileDescriptor2 = 0;
+  int success = 0;
 
-	//syscall.h has create misspelled as creat
-    fileDescriptor1 = creat("CreateNewTestFile.txt");
-	success = close(fileDescriptor1);
+  //syscall.h has create misspelled as creat
+  fileDescriptor1 = creat("CreateNewTestFile.txt");
+  success = close(fileDescriptor1);
 
-	//opens a file that does not exist
-    fileDescriptor2 = open("FileNotFoundError.txt");
+  //opens a file that does not exist
+  fileDescriptor2 = open("FileNotFoundError.txt");
 
-	//opens a file that does exist
-    fileDescriptor1 = open("CreateNewTestFile.txt");
+  //opens a file that does exist
+  fileDescriptor1 = open("CreateNewTestFile.txt");
 
-	success = close(fileDescriptor2);
-	success = close(fileDescriptor1);
+  success = close(fileDescriptor2);
+  success = close(fileDescriptor1);
 
-    halt();
-    /* not reached */
+  halt();
+  /* not reached */
 }

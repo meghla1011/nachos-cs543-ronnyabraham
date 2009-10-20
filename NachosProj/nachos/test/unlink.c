@@ -1,7 +1,5 @@
-/* create.c
- *	Simple program to test whether running a user program works.
- *	
- *	Just do a create the filename specified.
+/* unlink.c
+ *	Deletes the file created by create.c.
  *
  * 	NOTE: for some reason, user programs with global data structures 
  *	sometimes haven't worked in the Nachos environment.  So be careful
@@ -15,16 +13,14 @@
 int
 main()
 {
-	int fileDescriptor = 0;
-	int success = 0;
+  int fileDescriptor = 0;
+  int success = 0;
 
-	//opens a file
-    //fileDescriptor = open("TestFileToDelete.log");
+  //opens a file
+  //fileDescriptor = open("CreateFileTest.txt");
 
-	success = unlink("TestFileToDelete.log");
+  success = unlink("CreateFileTest.txt");
 
-	//success = close(fileDescriptor);
-
-    halt();
-    /* not reached */
+  halt();
+  /* not reached */
 }

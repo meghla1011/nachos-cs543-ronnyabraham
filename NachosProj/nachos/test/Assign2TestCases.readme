@@ -1,36 +1,48 @@
 create.c:
 	 - does a simple file create and a halt
+	 - Should create a file named "CreateFileTest.txt" in the test directory
 open.c:
-	-creates a file
-	-closes teh file
+	-creates a file (CreateNewTestFile.txt)
+	-closes the file
 	-opens the file that was created
-	-opens a file that does not exist
+	-opens a file that does not exist (FileNotFoundError.txt)
 	-closes the first open file
 	-closes the second open file
 
 openClose.c
-	-opens a file
+	-opens a file that does not yet exist, which should create the file (TestReadFile.log)
 	-close the file
 	
 createClose.c:
-	-creates a test file
+	-creates a test file (CreateOpenCloseTestFile.txt)
 	-closes the file using the file descriptor
 
 read.c
-	-opens a file to read
+	-opens a file to read (TestReadFile.log)
 	-read the file to buffer
 	-closes the file read
 
 write.c
-	-opens a file to write to
+	-opens a file to write to write to (TestReadFile.log)
 	-writes to buffer
 	-closes the file read
 
 unlink
-	-calls unlink on file
+	-calls unlink on the file created by create.c (CreateFileTest.txt)
 
 
 readStream.c
 	-reads from standard input
+(run nachos -d ma -x readStream.coff, type q, the console will wait for 5 bytes before returning and the console will display what was read)
+
+writeStream.c
+	-writes text to the standard output
+
+stdInStdOutTest.c
+	-writes text to standard output
+	-reads text from standard input
+	-writes text to standard output
+	-closes file descriptors 0/1
+	-try to write to standard output after descriptor was closed (which should return -1 since the stream was closed)
 
 

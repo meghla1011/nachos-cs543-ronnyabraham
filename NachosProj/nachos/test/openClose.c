@@ -1,7 +1,5 @@
 /* openClose.c
- *	Simple program to test whether running a user program works.
- *	
- *	Just do an open on a filename specified.
+ *	Opens and closes a filename specified.
  *
  * 	NOTE: for some reason, user programs with global data structures 
  *	sometimes haven't worked in the Nachos environment.  So be careful
@@ -15,14 +13,14 @@
 int
 main()
 {
-	int fileDescriptor = 0;
-	int success = 0;
+  int fileDescriptor = 0;
+  int success = 0;
 
-	//opens a file that does not exist
-    fileDescriptor = open("TestReadFile.log");
+  //opens a file that does not exist
+  fileDescriptor = open("TestReadFile.log");
 	
-	success = close(fileDescriptor);
+  success = close(fileDescriptor);
 
-    halt();
-    /* not reached */
+  halt();
+  /* not reached */
 }
