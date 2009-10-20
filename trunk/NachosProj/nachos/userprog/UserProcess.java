@@ -7,6 +7,7 @@ import nachos.userprog.*;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.EmptyStackException;
 import java.util.HashMap;
 import java.util.Map;
@@ -373,7 +374,7 @@ public class UserProcess {
     	int fileSize = readVirtualMemory(vaddr,data);
     	String filename = readVirtualMemoryString(vaddr, fileSize);
 
-    	FileSystem fileSystem = Machine.stubFileSystem();
+    	FileSystem fileSystem = ThreadedKernel.fileSystem;
 
     	//Lib.assertTrue(fileSystem == null, "UserProcess::handleCreate: No FileSystem");
     	if (fileSystem == null)
@@ -435,7 +436,7 @@ public class UserProcess {
     	int fileSize = readVirtualMemory(vaddr,data);
     	String filename = readVirtualMemoryString(vaddr, fileSize);
 
-    	FileSystem fileSystem = Machine.stubFileSystem();
+    	FileSystem fileSystem = ThreadedKernel.fileSystem;
 
     	//Lib.assertTrue(fileSystem == null, "UserProcess::handleOpen: No FileSystem");
 
@@ -704,7 +705,7 @@ public class UserProcess {
     	int fileSize = readVirtualMemory(vaddr,data);
     	String filename = readVirtualMemoryString(vaddr, fileSize);
 
-    	FileSystem fileSystem = Machine.stubFileSystem();
+    	FileSystem fileSystem = ThreadedKernel.fileSystem;
 
     	//Lib.assertTrue(fileSystem == null, "UserProcess::handleCreate: No FileSystem");
     	if (fileSystem == null)
@@ -940,6 +941,8 @@ public class UserProcess {
     {
     	public FileDescriptorOpenFileManager() 
     	{
+    		int standardInFileDescriptor = 0;
+    		int standardOutFileDescriptor = 1;
     		fileDescriptorOpenFileClassList = 
     			new FileDescriptorOpenFileClass[listLength];
     		
@@ -953,8 +956,16 @@ public class UserProcess {
     			fileDescriptorOpenFileClassList[i] = null;
     			indexStack.push(new Integer(i));
     		}
-//    		fileDescriptorOpenFileClassList[1] = "Standard Out";//standard out
-//    		fileDescriptorOpenFileClassList[0] = "Standard In";//standard in
+    		OpenFile standardInFile = UserKernel.console.openForReading();
+    		FileDescriptorOpenFileClass standardInClass = 
+    			new FileDescriptorOpenFileClass("StandardInFile", standardInFile);
+
+    		OpenFile standardOutFile = UserKernel.console.openForWriting();
+    		FileDescriptorOpenFileClass standardOutClass = 
+    			new FileDescriptorOpenFileClass("StandardOutFile", standardOutFile);
+    		
+    		fileDescriptorOpenFileClassList[standardInFileDescriptor] = standardInClass;
+    		fileDescriptorOpenFileClassList[standardOutFileDescriptor] = standardOutClass;
     		
     	}
 
@@ -986,10 +997,13 @@ public class UserProcess {
     	{
     		FileDescriptorOpenFileClass fileDescriptorOpenFileClass = 
     			fileDescriptorOpenFileClassList[fileDescriptor];
+    		int positionIndex = 0;
     		
-    		//int positionIndex = fileDescriptorOpenFileClass.getPositionIndex();
-    		//return positionIndex;
-    		return fileDescriptorOpenFileClass.getPositionIndex();
+    		if (fileDescriptor != 1)
+    		{
+    			positionIndex = fileDescriptorOpenFileClass.getPositionIndex();
+    		}
+    		return positionIndex;
     	}
 		
 		public void incrementPositionIndex(int fileDescriptor, int offset)
@@ -1067,37 +1081,4 @@ public class UserProcess {
     		private int positionIndex;    		
     	}
     }
-    
-    
- /*   private class ReadAbleClass //make this read/writeable class and add OutStream and replace OpenFile
-    {
-    	public ReadAbleClass(OpenFile openfile) 
-    	{
-    		readableObject = openfile;
-    	}
-    	public ReadAbleClass(InputStream stream) 
-    	{
-    		readableObject = stream;
-    	}
-    	public int read (byte[] buffer, int offset, int length) throws IOException, ClassNotFoundException
-    	{
-    		int returnValue = -1;
-    		if (readableObject instanceof OpenFile)
-    		{
-    			OpenFile openfile = ((OpenFile)readableObject);
-    			returnValue = openfile.read(buffer,offset,length);
-    		}
-    		else if (readableObject instanceof InputStream)
-    		{
-    			InputStream inputStream = ((InputStream)readableObject);
-    			returnValue = inputStream.read(buffer,offset,length);
-    		}
-    		else
-    		{
-    			throw new ClassNotFoundException();
-    		}
-    		return returnValue;
-    	}
-    	private Object readableObject;
-    }*/
 }
