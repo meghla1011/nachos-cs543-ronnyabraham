@@ -130,7 +130,7 @@ public class LotteryScheduler extends PriorityScheduler {
 		// run t1
     	t1.fork();
     	// wait for t1 to release the sema4, we do this to make sure t1 runs 
-    	// for a while before all other threads
+    	// for a while (acquiring the lock) before all other threads
     	sem.P();
     	// now run t2, t3 and t4
         t2.fork();
@@ -160,14 +160,15 @@ public class LotteryScheduler extends PriorityScheduler {
     		{
     			// log the priority of this thread
     			// getting the priority must be done with disabled interrupts
-    			//boolean oldInterrupStatus = Machine.interrupt().disable();
-    			//int p = ThreadedKernel.scheduler.getEffectivePriority();
-    			//Machine.interrupt().restore(oldInterrupStatus);
-    			//Lib.debug(dbgThread, "=##= T1 says: tick " + i + " --->> my effective priority is " + p);
+    			boolean oldInterrupStatus = Machine.interrupt().disable();
+    			int p = ThreadedKernel.scheduler.getEffectivePriority();
+    			Machine.interrupt().restore(oldInterrupStatus);
+    			Lib.debug(dbgThread, "=##= T1 says: tick " + i + " --->> my effective priority is " + p);
     			
-    			if(i == 19)
+    			if(i == 10)
     			{
     				// signal the main thread that it may start forking t2, t3 and t4
+    				Lib.debug(dbgThread, "=##= T1 says: releasing sema4 so main thread can start forking T2, T3 and T4");
     	    		sema4.V();
     			}
     			
@@ -175,6 +176,7 @@ public class LotteryScheduler extends PriorityScheduler {
     			{
     				// release the lock after 50 ticks
     				// this will show the change in effective priority
+    				Lib.debug(dbgThread, "=##= T1 says: releasing the lock so  T2, T3 can continue");
     				lk.release();
     			}
     			KThread.currentThread().yield();
@@ -201,6 +203,8 @@ public class LotteryScheduler extends PriorityScheduler {
     		// t1 to release the lock, and in the meanwhile we expect them to
     		// donate their tickets to t1
     		lk.acquire();
+    		// release the lock right away
+    		lk.release();
     		for(int i = 0; i < 100; ++i)
     		{
     			Lib.debug(dbgThread, "=##= T" + id +" says: tick " + i);
@@ -289,36 +293,29 @@ public class LotteryScheduler extends PriorityScheduler {
 			super(transferPriority);
 		}
 		
-		// This method is different from the pickNextThread
-		// since it will modify the state of the threads waiting
-		// in the data structure iQueue. 
+
 		public KThread nextThread()
 		{
-			//runningThread is the thread that is hold the current lock 
-			//since it has finished the nextThread will get the
-			//lock and will start to run
+			Lib.assertTrue(Machine.interrupt().disabled());
+			// runningThread is the thread that is owns the current resource
+			// since it has finished the nextThread will get the
+			// resource and will start to run
 			if(runningThread != null)
 			{
 				LotteryThreadState state = (LotteryThreadState) runningThread;
-				state.listOfWaitingThreads.clear();
-				
-				if(runningThread.inheritedPriority)
-				{
-					runningThread.setPriority(runningThread.oldPriority);
-					runningThread.inheritedPriority = false;
-				}
+				// the old owner of this queue stops owning it, thus we need
+				// to clear its donation bucket
+				state.donationHat.clear();
 				runningThread = null;
 			}
-		    Lib.assertTrue(Machine.interrupt().disabled());
-		    
+		    // assign a new owner to this queue
 		    ThreadState nThread = pickNextThread();
 		    if(nThread != null)
 		    {
-		    	iQueue.remove(nThread);
+		    	lotteryQ.remove(nThread);
 		    	nThread.acquire(this);
 		    	return nThread.thread;
 		    }
-		    
 		    return null;
 		}
 		
@@ -331,7 +328,8 @@ public class LotteryScheduler extends PriorityScheduler {
 		 */
 		protected ThreadState pickNextThread()
 		{
-			if(iQueue.isEmpty())
+			// call draw() to perform a lottery of all waiting threads
+			if(lotteryQ.isEmpty())
 			{
 				return null;
 			}
@@ -343,8 +341,8 @@ public class LotteryScheduler extends PriorityScheduler {
 		 * draw
 		 * Draw a ticket from all the waiting threads and return the winner
 		 * Here is how the draw works:
-		 * A number is drawn  between 1 and sum(i) where i is all the priorities
-		 * (this is the total number of tickets held by all threads)
+		 * A number is drawn  between 1 and sum(i) where i is all the **effective** priorities
+		 * (this is the total number of tickets held by all waiting threads + any donations)
 		 * After the number was drawn, we return the winning thread holding the 
 		 * winner ticket
 		 */
@@ -353,57 +351,33 @@ public class LotteryScheduler extends PriorityScheduler {
 		{
 			int sumPriorities = 0;
 			
-			ListIterator<LotteryThreadState> iter = iQueue.listIterator();
+			ListIterator<LotteryThreadState> iter = lotteryQ.listIterator();
 			while(iter.hasNext())
 			{
 				LotteryThreadState state = iter.next();
-				sumPriorities += state.oldPriority;
+				sumPriorities += state.getEffectivePriority();
 			}
 			// generate a random number between 1 and sumPriorities
 			Random generator = new Random();
 			int winner = generator.nextInt(sumPriorities); // 0 based
 			winner++;
-			
-			// get the participants of the lottery, donating threads have 0 tickets
-			// so they get pulled out of the lottery
-			LinkedList<LotteryThreadState> zeroTicketThreads = new LinkedList<LotteryThreadState>();
-			
-			iter = iQueue.listIterator();
-			while(iter.hasNext())
-			{
-				LotteryThreadState state = iter.next();
-				ListIterator<LotteryThreadState> iter2 = state.listOfWaitingThreads.listIterator();
-				while(iter2.hasNext())
-				{
-					LotteryThreadState nonParticipatingThread = iter2.next();
-					zeroTicketThreads.add(nonParticipatingThread);
-				}
-			}
-			
+			// find out which thread is holding the winning ticket
 			int lowerBound = 1;
-			
-			// draw  ticket, remember that waiting threads have donated all their tickets
-			iter = iQueue.listIterator();
+			iter = lotteryQ.listIterator();
 			while(iter.hasNext())
 			{
 				LotteryThreadState state = iter.next();
-				if(zeroTicketThreads.contains(state))
-				{
-					// threads with no tickets do not participate in the lottery
-					continue;
-				}
-				int upperBound = lowerBound + state.priority;
+				int upperBound = lowerBound + state.getEffectivePriority();
 				if(winner >= lowerBound && winner < upperBound)
 				{
-					// thread with winning ticket jumps ecstatically
+					// thread with winning ticket jumps ecstatically!!
 					return state;
 				}
 				lowerBound = upperBound;
 			}
 			return null;
 		}
-		
-		LinkedList<LotteryThreadState> iQueue = new LinkedList<LotteryThreadState>();
+		LinkedList<LotteryThreadState> lotteryQ = new LinkedList<LotteryThreadState>();
     }
     
     
@@ -417,57 +391,46 @@ public class LotteryScheduler extends PriorityScheduler {
 		public LotteryThreadState(KThread thread)
 		{
 			super(thread);
-			oldPriority = priority;
 		}
 		
-		public void setPriority(int priority)
-		{
-			super.setPriority(priority);
-			oldPriority = priority;
-		}
-		
+		// # HW2 Q4
+		// The effective priority of a thread is how many
+		// tickets it holds + any tickets from other waiting threads
 		public int getEffectivePriority()
 		{
-			// # HW2 Q4
-			// The effective priority of a thread is how many
-			// tickets it holds + any tickets from other waiting threads
-			if(listOfWaitingThreads.size() > 0)
+			int donation = 0;
+			if(donationHat.size() > 0)
 			{
 				// take of my hat, iterate over all threads waiting 
 				// on the priority Q and collect all the donations
-				int donation = 0;
-				ListIterator<LotteryThreadState> iter = listOfWaitingThreads.listIterator();
+				ListIterator<LotteryThreadState> iter = donationHat.listIterator();
 				while(iter.hasNext())
 				{
 					LotteryThreadState state = iter.next();
 					donation += state.priority;
 				}
-				// track effectiveP only for the first time
-				oldPriority = priority;
-				priority = oldPriority + donation;
-				inheritedPriority = true;
 			}
-		    return priority;
+		    return priority + donation;
 		}
 		
 		public void waitForAccess(PriorityQueue waitQueue)
 		{
 			getEffectivePriority();
-			LotteryPriorityQueue lotteryQ = (LotteryPriorityQueue) waitQueue;
+			LotteryPriorityQueue q = (LotteryPriorityQueue) waitQueue;
 			// # HW2 Q4 add myself to the LotteryPriorityQueue 
-			lotteryQ.iQueue.add(this);
+			q.lotteryQ.add(this);
 			
 			// # HW2 Q4
 	    	// donate my priority to the thread currently holding the queue
-	    	// - done by adding myself to the running thread listOfHPThreads
+	    	// - done by adding myself to listOfWaitingThreads of the queue owner
 		    if(waitQueue.transferPriority)
 		    {
 		    	LotteryThreadState state = (LotteryThreadState) waitQueue.runningThread;
-		    	state.listOfWaitingThreads.add(this);
+		    	state.donationHat.add(this);
 		    }
 		}
 		
-		public LinkedList<LotteryThreadState> listOfWaitingThreads = new LinkedList<LotteryThreadState>();
+		public LinkedList<LotteryThreadState> donationHat = new LinkedList<LotteryThreadState>();
     }
     
 }
