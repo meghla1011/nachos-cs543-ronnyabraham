@@ -1,7 +1,5 @@
 /* createClose.c
- *	Simple program to test whether running a user program works.
- *	
- *	Just do a create the filename specified.
+ *	Just does a create and close of a filename specified.
  *
  * 	NOTE: for some reason, user programs with global data structures 
  *	sometimes haven't worked in the Nachos environment.  So be careful
@@ -15,14 +13,14 @@
 int
 main()
 {
-	int fileDescriptor = 0;
-	int success = 0;
+  int fileDescriptor = 0;
+  int success = 0;
 
-	//syscall.h has create misspelled as creat
-    fileDescriptor = creat("CreateOpenCloseTestFile.txt");
+  //syscall.h has create misspelled as creat
+  fileDescriptor = creat("CreateOpenCloseTestFile.txt");
 
-	success = close(fileDescriptor);
+  success = close(fileDescriptor);
 
-    halt();
-    /* not reached */
+  halt();
+  /* not reached */
 }

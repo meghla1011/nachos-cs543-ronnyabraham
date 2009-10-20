@@ -1,5 +1,5 @@
-/* read.c
- *	Opens a preexisting file, reads from it and closes it.
+/* readStream.c
+ *	Reads from the console.
  *
  * 	NOTE: for some reason, user programs with global data structures 
  *	sometimes haven't worked in the Nachos environment.  So be careful
@@ -17,14 +17,9 @@ main()
   int success = 0;
   int bytesRead = 0;
 
-  //syscall.h has create misspelled as creat
-  fileDescriptor = open("TestReadFile.log");
-
   void* tempBuffer[100];
-  int bytesToRead = 391;
-
+  int bytesToRead = 5;
   bytesRead = read(fileDescriptor, tempBuffer, bytesToRead);
-  success = close(fileDescriptor);
 
   halt();
   /* not reached */

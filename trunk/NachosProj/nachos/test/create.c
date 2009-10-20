@@ -1,7 +1,5 @@
 /* create.c
- *	Simple program to test whether running a user program works.
- *	
- *	Just do a create the filename specified.
+ *	Creates the filename specified.
  *
  * 	NOTE: for some reason, user programs with global data structures 
  *	sometimes haven't worked in the Nachos environment.  So be careful
