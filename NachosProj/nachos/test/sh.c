@@ -140,6 +140,7 @@ void runline(char* line) {
 	    }
 	}
 	else if (strcmp(argv[0], "halt")==0) {
+	    printf("HALTTTT is reached \n");
 	    if (argc == 1) {
 		halt();
 		printf("Not the root process!\n");
@@ -191,13 +192,13 @@ void runline(char* line) {
 int main(int argc, char *argv[]) {
     char prompt[] = "nachos% ";
 
-    char buffer[BUFFERSIZE];
+    char buffer[BUFFERSIZE] = "create";
 
-    while (1) {
+    //while (1) {
 	printf("%s", prompt);
-
-	readline(buffer, BUFFERSIZE);
-
+    
+	//readline(buffer, BUFFERSIZE);
+   
 	runline(buffer);
-    }
+    //}
 }

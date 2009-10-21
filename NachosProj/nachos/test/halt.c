@@ -11,10 +11,13 @@
  */
 
 #include "syscall.h"
+#include "stdio.h"
 
 int
 main()
 {
-    halt();
+    
+           printf("hello world\n");
+           halt();
     /* not reached */
 }
