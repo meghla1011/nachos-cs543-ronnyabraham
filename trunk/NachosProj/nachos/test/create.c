@@ -9,11 +9,13 @@
  */
 
 #include "syscall.h"
+#include "stdio.h"
 
 int
 main()
 {
   //syscall.h has create misspelled as creat
+    printf("before calling create\n");
     creat("CreateFileTest.txt");
 
     halt();

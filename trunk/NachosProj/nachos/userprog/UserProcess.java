@@ -39,6 +39,10 @@ public class UserProcess {
 			pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
 		}
 		fileDescriptorOpenFileManager = new FileDescriptorOpenFileManager();
+		
+		processId = nextProcessId;
+		nextProcessId++;
+		activeProcesses.put(processId, this);
 	}
     
     /**
@@ -65,7 +69,8 @@ public class UserProcess {
 	if (!load(name, args))
 	    return false;
 	
-	new UThread(this).setName(name).fork();
+	currThread =  new UThread(this);
+	currThread.setName(name).fork();
 
 	return true;
     }
@@ -815,13 +820,13 @@ public class UserProcess {
 	    return handleUnlink();
 	case syscallExec:
 		System.out.println("system call syscallExec");
-		//todo will uncomment this line after I get this working Balaji
-		//return handleExec(a0,a1,a2);
-		return -1;
+		
+		return handleExec(a0,a1,a2);
+		//return -1;
 	case syscallJoin:
-		return handleJoin();
+		return handleJoin(a0,a1);
 	case syscallExit:
-		return handleExit();
+		return handleExit(a0);
 
 	default:
 	    Lib.debug(dbgProcess, "Unknown syscall " + syscall);
@@ -869,19 +874,63 @@ public class UserProcess {
     
     //This function implements the handleJoin system call 
     
-    private int handleJoin()
+    private int handleJoin(int a0,int a1)
     {
-        int returnValue = 0;
-        //todo BR need to do the implementation 
+        int returnValue = 1;
+     
+        //If we cannot find the child process return
+		if ( ! childprocessList.contains(a0) )
+			return -1;
+
+		//check for the running status of the child process
+		if ( ! activeProcesses.containsKey(a0) ) 
+			return 0;
+
+		
+		UserProcess childprocess = activeProcesses.get(a0);
+		
+
+		if ( childprocess.status != this.statusFinished )
+			currThread.join();
+		else
+		{
+			byte [] data = Lib.bytesFromInt(0);
+			writeVirtualMemory (a1, data);
+			// write the status in memory
+		}	
+		
+		
         return returnValue;
     }
     
     //This function implements the handleExit system call 
     
-    private int handleExit()
+    private int handleExit(int a0)
     {
         int returnValue = 0;
-        //todo BR need to do the implementation 
+     //todo Balaji Close the file descriptorList here 
+        /*
+		for ( int i = 0; i < descriptorList.length; i++ )
+		{
+			if ( descriptorList[i] != null )
+				handleClose(i);
+		}
+		*/
+
+		// Next, unload the sections
+		unloadSections(); 
+
+		//remove the process from the list
+		activeProcesses.remove(processId);
+		
+		if ( activeProcesses.size() == 0 )
+			UserKernel.kernel.terminate();
+
+		// Assign  the status
+		this.status = a0;
+
+		// Kill the thread
+		KThread.finish(); 
         return returnValue;
     }
 
@@ -930,13 +979,16 @@ public class UserProcess {
     
     private int initialPC, initialSP;
     private int argc, argv;
-    
+    private UThread currThread=null;
     private FileDescriptorOpenFileManager fileDescriptorOpenFileManager;
-	
+	public int status =-1;
     private static final int pageSize = Processor.pageSize;
     private static final char dbgProcess = 'a';
     private Vector<Integer> childprocessList = new Vector<Integer>();
+    private static Map <Integer, UserProcess> activeProcesses = new HashMap <Integer, UserProcess> ();
     private int processId =-1;
+    private int nextProcessId = 0;
+    private static final int statusFinished = 4;
     private static class FileDescriptorOpenFileManager
     {
     	public FileDescriptorOpenFileManager() 
