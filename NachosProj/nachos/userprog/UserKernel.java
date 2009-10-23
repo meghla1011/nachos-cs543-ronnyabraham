@@ -19,14 +19,23 @@ public class UserKernel extends ThreadedKernel {
      * Initialize this kernel. Creates a synchronized console and sets the
      * processor's exception handler.
      */
-    public void initialize(String[] args) {
-	super.initialize(args);
+    public void initialize(String[] args)
+    {
+    	super.initialize(args);
 
-	console = new SynchConsole(Machine.console());
-	
-	Machine.processor().setExceptionHandler(new Runnable() {
-		public void run() { exceptionHandler(); }
-	    });
+    	int numPhysPages = Machine.processor().getNumPhysPages();
+    	pageList = new PageList(numPhysPages);//TODO: not quite right    
+
+    	console = new SynchConsole(Machine.console());
+
+    	Machine.processor().setExceptionHandler(new Runnable() {
+    		public void run() { exceptionHandler(); }
+    	});
+    }
+    
+    public static PageList getPageList()
+    {
+    	return pageList;
     }
 
     /**
@@ -34,7 +43,8 @@ public class UserKernel extends ThreadedKernel {
      */	
     public void selfTest() {
 	super.selfTest();
-/*
+
+	/*
 	System.out.println("Testing the console device. Typed characters");
 	System.out.println("will be echoed until q is typed.");
 
@@ -42,13 +52,14 @@ public class UserKernel extends ThreadedKernel {
 
 	do {
 	    c = (char) console.readByte(true);
-	    //System.out.println("reading the char "+c);
 	    console.writeByte(c);
 	}
 	while (c != 'q');
-
-	System.out.println("");
-	*/
+  
+	//System.out.println("");
+	 
+	 */
+	
     }
 
     /**
@@ -115,4 +126,149 @@ public class UserKernel extends ThreadedKernel {
 
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
+    
+
+    private static PageList pageList;
+    
+    public class Page
+    {
+    	public Page(Page nextPage, int aValue) 
+    	{
+    		value = aValue;
+    		next = nextPage;
+    		previous = null;
+    		
+    		nextPage.previous = this;
+    	}
+    	
+    	public Page(Page nextPage) 
+    	{
+    		next = nextPage;
+    		nextPage.previous = this;
+    	}
+    	
+    	public Page() 
+    	{
+    		next = null;
+    		previous = null;
+    	}
+    	
+    	public void setValue(int aValue)
+    	{
+    		value = aValue;
+    	}
+    	
+    	public int getValue()
+    	{
+    		return value;
+    	}
+    	public void setNext(Page aPage)
+    	{
+    		next = aPage;
+    		aPage.previous = this;
+    	}
+    	
+    	public Page getNext()
+    	{
+    		return next;
+    	}
+    	
+       	public Page getPrevious()
+    	{
+    		return next;
+    	}
+    	
+    	private int value;
+    	private Page next;
+    	private Page previous;
+    	
+    }
+
+    public class PageList
+    {
+    	public PageList(int aLength) 
+    	{
+    		lock = new Lock();
+    		length = aLength;
+    		root = new Page();
+    		root.setValue(0);
+    		firstFreePage = root;
+    		initialize();
+    	}
+    	public void initialize()
+    	{
+    		Page currentPage = root;
+    		for (int i =1; i<length; i++)
+    		{
+    			Page nextPage = new Page();
+    			currentPage.setNext(nextPage);
+    			currentPage = nextPage;
+    		}
+    		currentPage = null;
+    	}
+    	
+    	public Page getPages(int pagesWanted)
+    	{
+    		if (! lock.isHeldByCurrentThread())
+    		{
+    			lock.acquire();
+    		}
+    		
+    		Page currentPage = firstFreePage;
+    		int index = 0;
+    		while ((index < pagesWanted) && (currentPage !=null))
+    		{
+    			currentPage = currentPage.getNext();
+    			index++;
+    		}
+    		if (index != pagesWanted)
+    		{
+    			//could not get all the pages that were desired
+    			//maybe an error, not sure
+    		}
+
+    		Page returnPage = firstFreePage;
+    		firstFreePage = currentPage;
+    		currentPage.previous.next = null;
+
+			lock.release();
+    		return returnPage;	
+    	}
+    	
+    	public void freePages(Page usedPage)
+    	{
+    		if (! lock.isHeldByCurrentThread())
+    		{
+    			lock.acquire();
+    		}
+
+
+    		Page currentPage = firstFreePage;
+
+    		if (currentPage == null)
+    		{
+    			//all pages are used, so the first free page is the used page
+    			firstFreePage = usedPage;//maybe firstFreePage.next?
+    		}
+    		else
+    		{
+    			while (currentPage.next !=null)
+    			{
+    				currentPage = currentPage.getNext();
+    			}
+    			currentPage.next = usedPage;
+    			usedPage.previous = currentPage;
+    		}
+    		lock.release();
+    		return;	
+    	}
+    	
+    	
+    	private int length;
+    	private Page root;
+    	private Page firstFreePage;
+    	private Lock lock;
+    	
+    }
+    
 }

@@ -46,3 +46,7 @@ stdInStdOutTest.c
 	-try to write to standard output after descriptor was closed (which should return -1 since the stream was closed)
 
 
+
+Cases to still try:
+call open on a file that the process already has opened
+
