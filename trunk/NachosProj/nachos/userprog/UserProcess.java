@@ -3,6 +3,8 @@ package nachos.userprog;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
+//import nachos.userprog.UserKernel.Page;
+//import nachos.userprog.UserKernel.PageList;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -33,13 +35,21 @@ public class UserProcess {
 	public UserProcess()
 	{
 		int numPhysPages = Machine.processor().getNumPhysPages();
+//		int numPhysPages = 8;
 		pageTable = new TranslationEntry[numPhysPages];
+//		Page memory = UserKernel.getPageList().getPages(numPhysPages);
+//		int ppn = 0;
+//		Page currentPage = memory;
 		for (int i=0; i<numPhysPages; i++)
 		{
+//			ppn = currentPage.getValue();
 			pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+//			pageTable[i] = new TranslationEntry(i,ppn, true,false,false,false);
+//			currentPage = currentPage.getNext();
 		}
 		fileDescriptorOpenFileManager = new FileDescriptorOpenFileManager();
-		
+
+
 		processId = nextProcessId;
 		nextProcessId++;
 		activeProcesses.put(processId, this);
@@ -318,6 +328,7 @@ public class UserProcess {
 
 		// for now, just assume virtual addresses=physical addresses
 		section.loadPage(i, vpn);
+		//TODO:: FIXME:: see above comment
 	    }
 	}
 	
@@ -730,21 +741,33 @@ public class UserProcess {
     			{
     				//check if the filename is mapped to a file description
     				fileDescriptor = fileDescriptorOpenFileManager.getFileDescriptor(filename);
+    				
+    				//KAP - if file not open, try to open by calling handleOpen
+    				//if that works, then it will be in the file descriptor map and
+    				//we can then delete it
     			}
     	    	catch(NullPointerException e)
     	    	{
-    	    		String errorMsg = e.toString() + ", file not found in descriptor map, deleting file anyway";
+    	    		String errorMsg = "Exception Caught: " + e.toString() + ", file not found in descriptor map, deleting file anyway";
     				Lib.debug(dbgProcess, errorMsg);
     	    	}
     	    	
     	    	//delete the file
-    	    	fileSystem.remove(filename);
-
-    	    	//delete the file from the descriptor mapping if it is mapped
-    	    	if (fileDescriptor >= 0)
+    	    	if (fileDescriptor != -1)
     	    	{
+    	    		fileSystem.remove(filename);
+    	    		
+        	    	//delete the file from the descriptor mapping if it is mapped
+    	    	    
     	    		//unlink the file from the fileDescriptor class
-    	    		fileDescriptorOpenFileManager.removeFileDescriptorMapping(fileDescriptor);
+    	    		fileDescriptorOpenFileManager.removeFileDescriptorMapping(fileDescriptor);    	    		
+    	    	}
+    	    	else
+    	    	{
+    	    		String errorMsg = "UserProcess::handleUnlink - Can't delete a file that isn't opened, returning -1";
+    	    		Lib.debug(dbgProcess, errorMsg);
+    	    		returnValue = -1;  	    		
+    	    		
     	    	}
     		}
     		catch(Exception e)
@@ -820,7 +843,6 @@ public class UserProcess {
 	    return handleUnlink();
 	case syscallExec:
 		System.out.println("system call syscallExec");
-		
 		return handleExec(a0,a1,a2);
 		//return -1;
 	case syscallJoin:
@@ -1042,7 +1064,20 @@ public class UserProcess {
 		
 		public int getFileDescriptor(String filename)
 		{
-			return filenameMap.get(filename);
+			int fileDescriptor = -1;
+			
+			Integer fileDescriptorInteger = filenameMap.get(filename);
+			
+			if (fileDescriptorInteger == null)
+			{
+				Lib.debug(dbgProcess, "File not found in descriptor map, returning -1");
+			}
+			else
+			{
+				fileDescriptor = fileDescriptorInteger.intValue();
+			}
+			
+			return fileDescriptor;
 		}
 		
 		public int getPositionIndex(int fileDescriptor)
@@ -1133,4 +1168,5 @@ public class UserProcess {
     		private int positionIndex;    		
     	}
     }
+    
 }

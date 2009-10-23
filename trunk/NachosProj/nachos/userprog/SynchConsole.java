@@ -122,7 +122,7 @@ public class SynchConsole {
 
 	    int i;
 	    for (i=0; i<length; i++) {
-		int value = SynchConsole.this.readByte(false);
+		int value = SynchConsole.this.readByte(true);
 		if (value == -1)
 		    break;
 		
