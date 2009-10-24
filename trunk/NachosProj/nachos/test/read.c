@@ -9,6 +9,7 @@
  */
 
 #include "syscall.h"
+#include "stdio.h" 
 
 int
 main()
@@ -24,6 +25,10 @@ main()
   int bytesToRead = 391;
 
   bytesRead = read(fileDescriptor, tempBuffer, bytesToRead);
+
+  write(1,tempBuffer,bytesToRead);
+  
+  
   success = close(fileDescriptor);
 
   halt();

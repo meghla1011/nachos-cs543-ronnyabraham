@@ -192,7 +192,8 @@ void runline(char* line) {
 int main(int argc, char *argv[]) {
     char prompt[] = "nachos% ";
 
-    char buffer[BUFFERSIZE] = "create";
+    char buffer[BUFFERSIZE] = "write\runlink\r";
+	//char buffer[BUFFERSIZE];
 
     //while (1) {
 	printf("%s", prompt);
@@ -202,3 +203,6 @@ int main(int argc, char *argv[]) {
 	runline(buffer);
     //}
 }
+
+
+
