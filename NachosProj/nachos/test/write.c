@@ -23,9 +23,9 @@ main()
   fileDescriptor = open("TestReadFile.log");
 
   //void* tempBuffer[100];
-  char *c = (" - Ernie and Kevin should both get an A in this class!");
+  char *c = (" - Only Ernie and Kevin should both get an A++ in this class!");
 
-  unsigned int bytesToWrite = strlen(c);
+   int bytesToWrite = strlen(c);
 
   bytesWritten = write(fileDescriptor, (void*)c, bytesToWrite);
   success = close(fileDescriptor);

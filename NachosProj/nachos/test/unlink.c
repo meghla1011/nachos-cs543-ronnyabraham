@@ -17,8 +17,8 @@ main()
   int success = 0;
 
   //opens a file
-  //fileDescriptor = open("CreateFileTest.txt");
-
+  //fileDescriptor = creat("CreateFileTest.txt");
+  
   success = unlink("CreateFileTest.txt");
 
   halt();
