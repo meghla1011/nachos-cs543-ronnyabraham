@@ -32,6 +32,26 @@ public class UserProcess {
 	{
 		Lib.debug(dbgProcess, "UserProcess::UserProcess Entered");
 		
+		// open stdin and stdout
+		for(int i = 0; i < fileDescriptors.length; ++i)
+		{
+			fileDescriptors[i] = null;
+		}
+		
+		fileDescriptors[0] = UserKernel.console.openForReading();
+		if(fileDescriptors[0] == null)
+		{
+			String errorMsg = "UserProcess::UserProcess Failed to open file for reading";
+			Lib.debug(dbgProcess, errorMsg);
+		}
+			
+		fileDescriptors[1] = UserKernel.console.openForWriting();
+		if(fileDescriptors[1]  == null)
+		{
+			String errorMsg = "UserProcess::UserProcess Failed to open file for writing";
+			Lib.debug(dbgProcess, errorMsg);	
+		}
+		
 		//Each process will be allocated 15 pages, since 8 did not seem to be sufficient
 		int numPhysPages = 15;
 		pageTable = new TranslationEntry[numPhysPages];
@@ -658,7 +678,7 @@ public class UserProcess {
     	Lib.debug(dbgProcess, "handleClose trying to close file descriptor " + a0);
     	
     	// verify the file descriptor id is legal
-    	if ( a0 < 2 || a0 > 17 )
+    	if ( a0 < 0 || a0 > 17 )
     	{
 			Lib.debug(dbgProcess, "UserProcess::handleClose FAILED: illegal file descriptor");
     		return -1;

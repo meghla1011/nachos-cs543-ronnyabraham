@@ -20,7 +20,7 @@ main()
   void* tempBuffer[100];
   int bytesToRead = 5;
   bytesRead = read(fileDescriptor, tempBuffer, bytesToRead);
-  printf("You typed: %s", (char*)tempBuffer);
+  //printf("You typed: %s", (char*)tempBuffer);
 
   halt();
   /* not reached */

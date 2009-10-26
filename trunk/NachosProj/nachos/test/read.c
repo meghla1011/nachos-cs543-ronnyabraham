@@ -26,7 +26,7 @@ main()
 
   bytesRead = read(fileDescriptor, tempBuffer, bytesToRead);
 
-  printf("Opening TestReadFile.log for reading, then writing it to stdout:\n");
+  //printf("Opening TestReadFile.log for reading, then writing it to stdout:\n");
   write(1,tempBuffer,bytesToRead);
 
 
