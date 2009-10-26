@@ -4,14 +4,16 @@ create.c:
 open.c:
 	-creates a file (CreateNewTestFile.txt)
 	-closes the file
-	-opens a file that does not exist (FileNotFoundError.txt)
 	-opens the file that was created
+	-opens a file that does not exist (FileNotFoundError.txt)
 	-closes the first open file
 	-closes the second open file
 
 openClose.c
 	-opens a file that does not yet exist, which should create the file (TestReadFile.log)
 	-close the file
+	-close file descriptor 0
+	-close file descriptor 1
 	
 createClose.c:
 	-creates a test file (CreateOpenCloseTestFile.txt)

@@ -17,7 +17,7 @@ main()
   int success = 0;
 
   //syscall.h has create misspelled as creat
-  printf("Creating and then closing file  - CreateOpenCloseTestFile.txt\n");
+  //printf("Creating and then closing file  - CreateOpenCloseTestFile.txt\n");
   fileDescriptor = creat("CreateOpenCloseTestFile.txt");
 
   success = close(fileDescriptor);

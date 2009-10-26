@@ -22,7 +22,7 @@ main()
   //syscall.h has create misspelled as creat
   fileDescriptor = open("TestReadFile.log");
 
-  printf("Writing the string AAA BBB CCC DDD EEE to file TestReadFile.log\n");
+  //printf("Writing the string AAA BBB CCC DDD EEE to file TestReadFile.log\n");
   char *c = ("AAA BBB CCC DDD EEE");
 
   int bytesToWrite = strlen(c);

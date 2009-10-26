@@ -20,6 +20,8 @@ main()
   fileDescriptor = open("TestReadFile.log");
 	
   success = close(fileDescriptor);
+  success = close(0);
+  success = close(1);
 
   halt();
   /* not reached */

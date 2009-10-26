@@ -19,17 +19,17 @@ main()
 
   //syscall.h has create misspelled as creat
   fileDescriptor1 = creat("CreateNewTestFile.txt");
-  printf("Creating file - CreateNewTestFile.txt, creat returned: %d\n", fileDescriptor1);
+  //printf("Creating file - CreateNewTestFile.txt, creat returned: %d\n", fileDescriptor1);
   success = close(fileDescriptor1);
-  printf("Closing - CreateNewTestFile.txt, close returned: %d\n", success);
+  //printf("Closing - CreateNewTestFile.txt, close returned: %d\n", success);
 
   //opens a file that does not exist
   fileDescriptor2 = open("FileNotFoundError.txt");
-  printf("Attempting to open a non-existing file, open returned: %d\n", fileDescriptor2);
+  //printf("Attempting to open a non-existing file, open returned: %d\n", fileDescriptor2);
 
   //opens a file that does exist
   fileDescriptor1 = open("CreateNewTestFile.txt");
-  printf("Opening CreateNewTestFile.txt, open returned: %d\n", fileDescriptor1);
+  //printf("Opening CreateNewTestFile.txt, open returned: %d\n", fileDescriptor1);
 
   success = close(fileDescriptor2);
   success = close(fileDescriptor1);
