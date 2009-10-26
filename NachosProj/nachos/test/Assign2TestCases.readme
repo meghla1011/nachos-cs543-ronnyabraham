@@ -4,8 +4,8 @@ create.c:
 open.c:
 	-creates a file (CreateNewTestFile.txt)
 	-closes the file
-	-opens the file that was created
 	-opens a file that does not exist (FileNotFoundError.txt)
+	-opens the file that was created
 	-closes the first open file
 	-closes the second open file
 
