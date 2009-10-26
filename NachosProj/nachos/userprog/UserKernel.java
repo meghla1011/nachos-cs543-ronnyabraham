@@ -1,5 +1,8 @@
 package nachos.userprog;
 
+import java.util.LinkedList;
+import java.util.NoSuchElementException;
+
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
@@ -24,19 +27,20 @@ public class UserKernel extends ThreadedKernel {
     	super.initialize(args);
 
     	int numPhysPages = Machine.processor().getNumPhysPages();
-    	pageList = new PageList(numPhysPages);//TODO: not quite right    
+//    	pageList = new PageList(numPhysPages);//TODO: not quite right
 
     	console = new SynchConsole(Machine.console());
+    	memoryManager = new MemoryManager(numPhysPages);
 
     	Machine.processor().setExceptionHandler(new Runnable() {
     		public void run() { exceptionHandler(); }
     	});
     }
     
-    public static PageList getPageList()
-    {
-    	return pageList;
-    }
+//    public static LinkedList<Page> getPageList()
+//    {
+//    	return memoryManager;
+//    }
 
     /**
      * Test the console device.
@@ -126,31 +130,15 @@ public class UserKernel extends ThreadedKernel {
 
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
-    
 
-    private static PageList pageList;
+    public static MemoryManager memoryManager;
+     
     
     public class Page
     {
-    	public Page(Page nextPage, int aValue) 
+    	public Page(int aValue) 
     	{
     		value = aValue;
-    		next = nextPage;
-    		previous = null;
-    		
-    		nextPage.previous = this;
-    	}
-    	
-    	public Page(Page nextPage) 
-    	{
-    		next = nextPage;
-    		nextPage.previous = this;
-    	}
-    	
-    	public Page() 
-    	{
-    		next = null;
-    		previous = null;
     	}
     	
     	public void setValue(int aValue)
@@ -162,113 +150,66 @@ public class UserKernel extends ThreadedKernel {
     	{
     		return value;
     	}
-    	public void setNext(Page aPage)
-    	{
-    		next = aPage;
-    		aPage.previous = this;
-    	}
-    	
-    	public Page getNext()
-    	{
-    		return next;
-    	}
-    	
-       	public Page getPrevious()
-    	{
-    		return next;
-    	}
-    	
+     	    	
     	private int value;
-    	private Page next;
-    	private Page previous;
-    	
     }
 
-    public class PageList
+    public class MemoryManager
     {
-    	public PageList(int aLength) 
+    	private MemoryManager(int aLength) 
     	{
     		lock = new Lock();
-    		length = aLength;
-    		root = new Page();
-    		root.setValue(0);
-    		firstFreePage = root;
-    		initialize();
+    		initialize(aLength);
     	}
-    	public void initialize()
+    	private void initialize(int length)
     	{
-    		Page currentPage = root;
-    		for (int i =1; i<length; i++)
-    		{
-    			Page nextPage = new Page();
-    			currentPage.setNext(nextPage);
-    			currentPage = nextPage;
-    		}
-    		currentPage = null;
+    		memoryManager = new LinkedList<Page>();
+        	
+        	for (int i=0; i<length; i++)
+        	{
+        		memoryManager.add(new Page (i));
+        	}
+        	
     	}
     	
-    	public Page getPages(int pagesWanted)
+    	public LinkedList<Page> getPages(int pagesWanted) throws NoSuchElementException
     	{
-    		if (! lock.isHeldByCurrentThread())
+    		LinkedList<Page> returnList = null;
+    		if (pagesWanted <= memoryManager.size())
     		{
-    			lock.acquire();
-    		}
-    		
-    		Page currentPage = firstFreePage;
-    		int index = 0;
-    		while ((index < pagesWanted) && (currentPage !=null))
-    		{
-    			currentPage = currentPage.getNext();
-    			index++;
-    		}
-    		if (index != pagesWanted)
-    		{
-    			//could not get all the pages that were desired
-    			//maybe an error, not sure
-    		}
 
-    		Page returnPage = firstFreePage;
-    		firstFreePage = currentPage;
-    		currentPage.previous.next = null;
-
-			lock.release();
-    		return returnPage;	
-    	}
-    	
-    	public void freePages(Page usedPage)
-    	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
-
-
-    		Page currentPage = firstFreePage;
-
-    		if (currentPage == null)
-    		{
-    			//all pages are used, so the first free page is the used page
-    			firstFreePage = usedPage;//maybe firstFreePage.next?
-    		}
-    		else
-    		{
-    			while (currentPage.next !=null)
+    			if (! lock.isHeldByCurrentThread())
     			{
-    				currentPage = currentPage.getNext();
+    				lock.acquire();
     			}
-    			currentPage.next = usedPage;
-    			usedPage.previous = currentPage;
+    			returnList = new LinkedList<Page>();
+
+    			for (int i=0; i< pagesWanted; i++)
+    			{
+    				returnList.add(memoryManager.removeFirst());    			
+    			}
+
+    			lock.release();
+    		}
+    		return returnList;	
+    	}
+    	
+    	public void freePages(LinkedList<Page> usedPages)
+    	{
+    		if (! lock.isHeldByCurrentThread())
+    		{
+    			lock.acquire();
+    		}
+    		for (int i = usedPages.size(); i>0; i--)
+    		{
+    			memoryManager.add(usedPages.removeFirst());
     		}
     		lock.release();
     		return;	
     	}
     	
-    	
-    	private int length;
-    	private Page root;
-    	private Page firstFreePage;
-    	private Lock lock;
-    	
+    	private LinkedList<Page> memoryManager;
+    	private Lock lock;	
     }
     
 }
