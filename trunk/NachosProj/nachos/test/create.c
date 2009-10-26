@@ -20,10 +20,10 @@ main()
 	//Correct way to print out to the console...dont use printfs!!!!
 
 	  //write
-	  int fileDescriptor = 1;
-	  char* returnMsg = ("before calling create!!!");
-	  int bytesToWrite = strlen(returnMsg);
-	  int bytesWritten = write(fileDescriptor, (void*)returnMsg, bytesToWrite);
+	  //int fileDescriptor = 1;
+	  //char* returnMsg = ("before calling create!!!");
+	  //int bytesToWrite = strlen(returnMsg);
+	  //int bytesWritten = write(fileDescriptor, (void*)returnMsg, bytesToWrite);
 
     creat("CreateFileTest.txt");
 

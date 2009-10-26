@@ -42,19 +42,19 @@ public class UserProcess {
 		{
 			fileDescriptors[i] = null;
 		}
-		
+
 		fileDescriptors[0] = UserKernel.console.openForReading();
 		if(fileDescriptors[0] == null)
 		{
 			String errorMsg = "UserProcess::UserProcess Failed to open file for reading";
 			Lib.debug(dbgProcess, errorMsg);
 		}
-			
+
 		fileDescriptors[1] = UserKernel.console.openForWriting();
 		if(fileDescriptors[1]  == null)
 		{
 			String errorMsg = "UserProcess::UserProcess Failed to open file for writing";
-			Lib.debug(dbgProcess, errorMsg);	
+			Lib.debug(dbgProcess, errorMsg);
 		}
 		int numPhysPages = Machine.processor().getNumPhysPages();
 //		int numPhysPages = 8;
@@ -75,10 +75,10 @@ public class UserProcess {
 		processId = nextProcessId;
 		nextProcessId++;
 		activeProcesses.put(processId, this);
-		
-		
+
+
 	}
-    
+
     /**
      * Allocate and return a new process of the correct class. The class name
      * is specified by the <tt>nachos.conf</tt> key
@@ -102,7 +102,7 @@ public class UserProcess {
     public boolean execute(String name, String[] args) {
 	if (!load(name, args))
 	    return false;
-	
+
 	currThread =  new UThread(this);
 	currThread.setName(name).fork();
 
@@ -145,6 +145,8 @@ public class UserProcess {
 
 	int bytesRead = readVirtualMemory(vaddr, bytes);
 
+	Lib.debug(dbgProcess, "readVirtualMemoryString called readVirtualMemory which returned " + bytesRead);
+
 	for (int length=0; length<bytesRead; length++) {
 	    if (bytes[length] == 0)
 		return new String(bytes, 0, length);
@@ -181,10 +183,14 @@ public class UserProcess {
      */
     public int readVirtualMemory(int vaddr, byte[] data, int offset,
 				 int length) {
+
+					 Lib.debug(dbgProcess, "UserProcess.readVirtualMemory entered");
+					Lib.debug(dbgProcess, "vaddr = " + vaddr + " offset = " + offset + " length = " + length);
+
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
 	byte[] memory = Machine.processor().getMemory();
-	
+
 	// for now, just assume that virtual addresses equal physical addresses
 	if (vaddr < 0 || vaddr >= memory.length)
 	    return 0;
@@ -224,10 +230,13 @@ public class UserProcess {
      */
     public int writeVirtualMemory(int vaddr, byte[] data, int offset,
 				  int length) {
+
+	Lib.debug(dbgProcess, "UserProcess.writeVirtualMemory entered");
+
 	Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
 
 	byte[] memory = Machine.processor().getMemory();
-	
+
 	// for now, just assume that virtual addresses equal physical addresses
 	if (vaddr < 0 || vaddr >= memory.length)
 	    return 0;
@@ -250,7 +259,8 @@ public class UserProcess {
      */
     private boolean load(String name, String[] args) {
 	Lib.debug(dbgProcess, "UserProcess.load(\"" + name + "\")");
-	
+
+
 	OpenFile executable = ThreadedKernel.fileSystem.open(name, false);
 	if (executable == null) {
 	    Lib.debug(dbgProcess, "\topen failed");
@@ -281,6 +291,9 @@ public class UserProcess {
 	// make sure the argv array will fit in one page
 	byte[][] argv = new byte[args.length][];
 	int argsSize = 0;
+
+
+
 	for (int i=0; i<args.length; i++) {
 	    argv[i] = args[i].getBytes();
 	    // 4 bytes for argv[] pointer; then string plus one for null byte
@@ -293,7 +306,7 @@ public class UserProcess {
 	}
 
 	// program counter initially points at the program entry point
-	initialPC = coff.getEntryPoint();	
+	initialPC = coff.getEntryPoint();
 
 	// next comes the stack; stack pointer initially points to top of it
 	numPages += stackPages;
@@ -311,8 +324,13 @@ public class UserProcess {
 
 	this.argc = args.length;
 	this.argv = entryOffset;
-	
+
+Lib.debug(dbgProcess, "UserProcess.load:  args.length = " + args.length);
+Lib.debug(dbgProcess, "UserProcess.load:  argv.length = " + argv.length);
+
 	for (int i=0; i<argv.length; i++) {
+		Lib.debug(dbgProcess, "UserProcess::load writing arg " + i+1 + " to virtual memory");
+
 	    byte[] stringOffsetBytes = Lib.bytesFromInt(stringOffset);
 	    Lib.assertTrue(writeVirtualMemory(entryOffset,stringOffsetBytes) == 4);
 	    entryOffset += 4;
@@ -322,6 +340,8 @@ public class UserProcess {
 	    Lib.assertTrue(writeVirtualMemory(stringOffset,new byte[] { 0 }) == 1);
 	    stringOffset += 1;
 	}
+
+	Lib.debug(dbgProcess, "UserProcess::load returning");
 
 	return true;
     }
@@ -343,7 +363,7 @@ public class UserProcess {
 	// load sections
 	for (int s=0; s<coff.getNumSections(); s++) {
 	    CoffSection section = coff.getSection(s);
-	    
+
 	    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
 		      + " section (" + section.getLength() + " pages)");
 
@@ -355,7 +375,7 @@ public class UserProcess {
 		//TODO:: FIXME:: see above comment
 	    }
 	}
-	
+
 	return true;
     }
 
@@ -363,7 +383,7 @@ public class UserProcess {
      * Release any resources allocated by <tt>loadSections()</tt>.
      */
     protected void unloadSections() {
-    }    
+    }
 
     /**
      * Initialize the processor's registers in preparation for running the
@@ -373,6 +393,9 @@ public class UserProcess {
      * and initialize all other registers to 0.
      */
     public void initRegisters() {
+
+		Lib.debug(dbgProcess, "UserProcess.initRegisters entered");
+
 	Processor processor = Machine.processor();
 
 	// by default, everything's 0
@@ -383,50 +406,57 @@ public class UserProcess {
 	processor.writeRegister(Processor.regPC, initialPC);
 	processor.writeRegister(Processor.regSP, initialSP);
 
+
+Lib.debug(dbgProcess, "UserProcess.initRegisters:  argc.length = " + argc);
+Lib.debug(dbgProcess, "UserProcess.initRegisters:  argv.length = " + argv);
+
 	// initialize the first two argument registers to argc and argv
 	processor.writeRegister(Processor.regA0, argc);
 	processor.writeRegister(Processor.regA1, argv);
     }
 
     /**
-     * Handle the halt() system call. 
+     * Handle the halt() system call.
      */
     private int handleHalt() {
-    
+
 	Machine.halt();
-	
+
 	Lib.assertNotReached("Machine.halt() did not halt machine!");
 	return 0;
     }
 
     /**
-     * Handle the creat() system call. 
+     * Handle the creat() system call.
      */
     private int handleCreate(int a0)
     {
     	//Get the file name
     	String filename = readVirtualMemoryString(a0, 256);
+
+    	Lib.debug(dbgProcess, "handleCreate trying to create file: " + filename);
+
     	if(filename == null)
     	{
     		String errorMsg = "UserProcess::handleCreate: read virtual memory string failed";
 			Lib.debug(dbgProcess, errorMsg);
     		return -1;
     	}
-    		
+
     	if( filename.length() > 256)
     	{
     		String errorMsg = "UserProcess::handleCreate: file name size too big";
 			Lib.debug(dbgProcess, errorMsg);
     		return -1;
     	}
-    	
+
     	if(deleteList.contains(filename))
     	{
     		String errorMsg = "UserProcess::handleCreate: cannot create file that is pending deletion";
 			Lib.debug(dbgProcess, errorMsg);
     		return -1;
     	}
-    	
+
     	int openSlot = getFirstAvailableFd();
     	if(openSlot == -1)
     	{
@@ -444,12 +474,12 @@ public class UserProcess {
 				Lib.debug(dbgProcess, errorMsg);
 	    		return -1;
 			}
-			
+
 			fileDescriptors[openSlot] = fd;
 			return openSlot;
 		}
     }
-    
+
     private int getFirstAvailableFd ()
 	{
 		// Find the first open slot
@@ -461,14 +491,14 @@ public class UserProcess {
 				Lib.debug(dbgProcess, message);
 				return i;
 			}
-				
+
 		}
 		return -1;
 	}
 
 
     /**
-     * Handle the open() system call. 
+     * Handle the open() system call.
      */
     private int handleOpen(int a0)
     {
@@ -480,21 +510,21 @@ public class UserProcess {
 			Lib.debug(dbgProcess, errorMsg);
     		return -1;
     	}
-    		
+
     	if( filename.length() > 256)
     	{
     		String errorMsg = "UserProcess::handleOpen: file name size too big";
 			Lib.debug(dbgProcess, errorMsg);
     		return -1;
     	}
-    	
+
     	if(deleteList.contains(filename))
     	{
     		String errorMsg = "UserProcess::handleOpen: cannot create file that is pending deletion";
 			Lib.debug(dbgProcess, errorMsg);
     		return -1;
     	}
-    	
+
     	int openSlot = getFirstAvailableFd();
     	if(openSlot == -1)
     	{
@@ -512,15 +542,15 @@ public class UserProcess {
 				Lib.debug(dbgProcess, errorMsg);
 	    		return -1;
 			}
-			
+
 			fileDescriptors[openSlot] = fd;
 			return openSlot;
 		}
     }
-    
+
     /**
      * Handle the read() system call.
-     * The function prototype is; 
+     * The function prototype is;
      * int  read(int fd, char *buffer, int size);
      * where the arguments are fetched from registers a0, a1, and a2 respectively
      */
@@ -535,7 +565,7 @@ public class UserProcess {
     	}
     	// get our file descriptor
     	OpenFile fd = fileDescriptors[a0];
-    	
+
     	if( fd == null )
     	{
     		String errorMsg = "UserProcess::handleRead: file descriptor is null";
@@ -550,9 +580,9 @@ public class UserProcess {
         int bytesWritten = writeVirtualMemory(a1,buf,offset,bytesRead);
     	return bytesWritten;
     }
-    
+
     /**
-     * Handle the write() system call. 
+     * Handle the write() system call.
      * int  write(int fd, char *buffer, int size);
      */
     private int handleWrite(int a0,int a1, int a2)
@@ -566,7 +596,7 @@ public class UserProcess {
     	}
     	// get our file descriptor
     	OpenFile fd = fileDescriptors[a0];
-    	
+
     	if( fd == null )
     	{
     		String errorMsg = "UserProcess::handleWrite: file descriptor is null"+ a0 ;
@@ -592,10 +622,10 @@ public class UserProcess {
         	return -1;
         }
     	return bytesWritten;
-    } 
+    }
 
     /**
-     * Handle the close() system call. 
+     * Handle the close() system call.
      */
     private int handleClose(int a0)
     {
@@ -643,10 +673,10 @@ public class UserProcess {
     		}
     	}
     	return 0;
-    } 
-    
+    }
+
     /**
-     * Handle the unlink() system call. 
+     * Handle the unlink() system call.
      */
     private int handleUnlink(int a0)
     {
@@ -658,14 +688,14 @@ public class UserProcess {
 			Lib.debug(dbgProcess, errorMsg);
     		return -1;
     	}
-    		
+
     	if( filename.length() > 256)
     	{
     		String errorMsg = "UserProcess::handleUnlink: file name size too big";
 			Lib.debug(dbgProcess, errorMsg);
     		return -1;
     	}
-    	
+
     	// search our file descriptor array and find if there is any
     	// other file descriptor referring this file
     	boolean fdExists = false;
@@ -697,7 +727,7 @@ public class UserProcess {
     	}
     	return 0;
     }
-    
+
     private static final int
         syscallHalt = 0,
 	syscallExit = 1,
@@ -730,7 +760,7 @@ public class UserProcess {
      * <tr><td>8</td><td><tt>int  close(int fd);</tt></td></tr>
      * <tr><td>9</td><td><tt>int  unlink(char *name);</tt></td></tr>
      * </table>
-     * 
+     *
      * @param	syscall	the syscall number.
      * @param	a0	the first syscall argument.
      * @param	a1	the second syscall argument.
@@ -769,9 +799,9 @@ public class UserProcess {
 	}
 	return 0;
     }
-    
-    //This function implements the handleExec system call 
-    
+
+    //This function implements the handleExec system call
+
     private int handleExec(int a0,int a1,int a2)
     {
         int returnValue = -1;
@@ -791,7 +821,7 @@ public class UserProcess {
 		byte[] data = new byte [a1 * 4];
 		readVirtualMemory(a2, data, 0, a1 * 4);
 
-		for ( int i = 0; i < a1; i++ ) 
+		for ( int i = 0; i < a1; i++ )
 			arguments [i] = readVirtualMemoryString( Lib.bytesToInt( data, i * 4, 4 ), 256 );
 
 		// Create the new process
@@ -803,27 +833,27 @@ public class UserProcess {
 		// Return process Id of new child process
 		if ( newChild.execute(file, arguments) )
 			return newChild.processId;
-		
+
         return returnValue;
     }
-    
-    //This function implements the handleJoin system call 
-    
+
+    //This function implements the handleJoin system call
+
     private int handleJoin(int a0,int a1)
     {
         int returnValue = 1;
-     
+
         //If we cannot find the child process return
 		if ( ! childprocessList.contains(a0) )
 			return -1;
 
 		//check for the running status of the child process
-		if ( ! activeProcesses.containsKey(a0) ) 
+		if ( ! activeProcesses.containsKey(a0) )
 			return 0;
 
-		
+
 		UserProcess childprocess = activeProcesses.get(a0);
-		
+
 
 		if ( childprocess.status != this.statusFinished )
 			currThread.join();
@@ -832,18 +862,18 @@ public class UserProcess {
 			byte [] data = Lib.bytesFromInt(0);
 			writeVirtualMemory (a1, data);
 			// write the status in memory
-		}	
-		
-		
+		}
+
+
         return returnValue;
     }
-    
-    //This function implements the handleExit system call 
-    
+
+    //This function implements the handleExit system call
+
     private int handleExit(int a0)
     {
         int returnValue = 0;
-     //todo Balaji Close the file descriptorList here 
+     //todo Balaji Close the file descriptorList here
         /*
 		for ( int i = 0; i < descriptorList.length; i++ )
 		{
@@ -853,11 +883,11 @@ public class UserProcess {
 		*/
 
 		// Next, unload the sections
-		unloadSections(); 
+		unloadSections();
 
 		//remove the process from the list
 		activeProcesses.remove(processId);
-		
+
 		if ( activeProcesses.size() == 0 )
 			UserKernel.kernel.terminate();
 
@@ -865,7 +895,7 @@ public class UserProcess {
 		this.status = a0;
 
 		// Kill the thread
-		KThread.finish(); 
+		KThread.finish();
         return returnValue;
     }
 
@@ -892,7 +922,7 @@ public class UserProcess {
     		);
     		processor.writeRegister(Processor.regV0, result);
     		processor.advancePC();
-    		break;				       
+    		break;
 
     	default:
     		Lib.debug(dbgProcess, "Unexpected exception: " +
@@ -910,19 +940,19 @@ public class UserProcess {
     protected int numPages;
 
 
-    private static class FileDescriptorOpenFileManager    
+    private static class FileDescriptorOpenFileManager
     {
-    	public FileDescriptorOpenFileManager() 
+    	public FileDescriptorOpenFileManager()
     	{
     		int standardInFileDescriptor = 0;
     		int standardOutFileDescriptor = 1;
-    		fileDescriptorOpenFileClassList = 
+    		fileDescriptorOpenFileClassList =
     			new FileDescriptorOpenFileClass[listLength];
-    		
+
     		indexStack = new Stack<Integer>();
-    		
+
     		filenameMap = new HashMap<String,Integer>();
-    		
+
     		//descriptors 0 and 1 are already used by standard input/output?
     		for (int i = listLength-1; i >=2; i--)
     		{
@@ -930,43 +960,43 @@ public class UserProcess {
     			indexStack.push(new Integer(i));
     		}
     		OpenFile standardInFile = UserKernel.console.openForReading();
-    		FileDescriptorOpenFileClass standardInClass = 
+    		FileDescriptorOpenFileClass standardInClass =
     			new FileDescriptorOpenFileClass("StandardInFile", standardInFile);
 
     		OpenFile standardOutFile = UserKernel.console.openForWriting();
-    		FileDescriptorOpenFileClass standardOutClass = 
+    		FileDescriptorOpenFileClass standardOutClass =
     			new FileDescriptorOpenFileClass("StandardOutFile", standardOutFile);
-    		
+
     		fileDescriptorOpenFileClassList[standardInFileDescriptor] = standardInClass;
     		fileDescriptorOpenFileClassList[standardOutFileDescriptor] = standardOutClass;
-    		
+
     	}
 
     	public OpenFile getOpenFile(int fileDescriptor)
     	{
-    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass = 
+    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass =
     			fileDescriptorOpenFileClassList[fileDescriptor];
-    		
+
     		OpenFile openFile = fileDescriptorOpenFileClass.getOpenFile();
     		return openFile;
 		}
 
 		public String getFilename(int fileDescriptor)
     	{
-    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass = 
+    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass =
     			fileDescriptorOpenFileClassList[fileDescriptor];
-    		
+
     		//String filename = fileDescriptorOpenFileClass.getFilename();
     		//return filename;
     		return fileDescriptorOpenFileClass.getFilename();
     	}
-		
+
 		public int getFileDescriptor(String filename)
 		{
 			int fileDescriptor = -1;
-			
+
 			Integer fileDescriptorInteger = filenameMap.get(filename);
-			
+
 			if (fileDescriptorInteger == null)
 			{
 				Lib.debug(dbgProcess, "File not found in descriptor map, returning -1");
@@ -975,62 +1005,62 @@ public class UserProcess {
 			{
 				fileDescriptor = fileDescriptorInteger.intValue();
 			}
-			
+
 			return fileDescriptor;
 		}
-		
+
 		public int getPositionIndex(int fileDescriptor)
     	{
-    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass = 
+    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass =
     			fileDescriptorOpenFileClassList[fileDescriptor];
     		int positionIndex = 0;
-    		
+
     		if (fileDescriptor != 1)
     		{
     			positionIndex = fileDescriptorOpenFileClass.getPositionIndex();
     		}
     		return positionIndex;
     	}
-		
+
 		public void incrementPositionIndex(int fileDescriptor, int offset)
     	{
-    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass = 
+    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass =
     			fileDescriptorOpenFileClassList[fileDescriptor];
-    		
-    		int currentPositionIndex = 
+
+    		int currentPositionIndex =
     			fileDescriptorOpenFileClass.getPositionIndex();
-    		
+
     		fileDescriptorOpenFileClass.setPositionIndex(currentPositionIndex + offset);
     	}
-    	
+
     	public int insertFileDescriptorMapping(String filename, OpenFile openedFile) throws EmptyStackException
     	{
-    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass = 
+    		FileDescriptorOpenFileClass fileDescriptorOpenFileClass =
     			new FileDescriptorOpenFileClass(filename, openedFile);
-    		
+
     		int index = indexStack.pop();
-    		fileDescriptorOpenFileClassList[index] = 
+    		fileDescriptorOpenFileClassList[index] =
     			fileDescriptorOpenFileClass;
-    		
+
     		filenameMap.put(filename, index);
-    		
+
     		return index;
     	}
-    	
+
     	public void removeFileDescriptorMapping(int fileDescriptor) throws EmptyStackException, ArrayIndexOutOfBoundsException
     	{
     		String filename = getFilename(fileDescriptor);
     		filenameMap.remove(filename);
-    		
+
     		fileDescriptorOpenFileClassList[fileDescriptor] = null;
-    		indexStack.push(fileDescriptor);	
+    		indexStack.push(fileDescriptor);
     	}
-    	
+
     	private FileDescriptorOpenFileClass[] fileDescriptorOpenFileClassList;
     	private Stack<Integer> indexStack;
     	private HashMap<String,Integer> filenameMap;
     	private final int listLength = 18;
-    	
+
     	private class FileDescriptorOpenFileClass
     	{
     		public FileDescriptorOpenFileClass(String aFilename, OpenFile aOpenFile)
@@ -1042,7 +1072,7 @@ public class UserProcess {
     		public void setPositionIndex(int aPositionIndex)
     		{
     			positionIndex = aPositionIndex;
-				
+
 			}
 			public FileDescriptorOpenFileClass(String aFilename, OpenFile aOpenFile, int aPositionIndex)
     		{
@@ -1064,7 +1094,7 @@ public class UserProcess {
     		}
     		private String filename;
     		private OpenFile openedFile;
-    		private int positionIndex;    		
+    		private int positionIndex;
     	}
     }
     /** The number of pages in the program's stack. */
