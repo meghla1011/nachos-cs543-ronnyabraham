@@ -8,8 +8,10 @@ onexit () {
   stty $OLDSTTYSTATE
 }
 
+export CLASSPATH=/cygdrive/c/Users/admin/svn/nachos/NachosProj/nachos/proj2
+echo $CLASSPATH
 OLDSTTYSTATE=`stty -g`
 trap onexit 0
 stty -icanon min 1 -echo
-java nachos.machine.Machine $*
+java  nachos.machine.Machine $*
 

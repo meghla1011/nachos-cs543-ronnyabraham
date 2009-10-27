@@ -52,3 +52,13 @@ stdInStdOutTest.c
 Cases to still try:
 call open on a file that the process already has opened
 
+
+Readme for testing join and exit.
+The code joinTest is used for testing the join command. The c file will launch a shJoin.coff process,
+and this process in turn is nothing but a shell, will launch another process called as sort and obtain
+the process id of the sort method and join the method. 
+
+Readme for the exec command
+For testing the exec in the sh.c main method I invoke the two sort processes in the background
+one after the other and they both run into completion without any memory page violation. 
+
