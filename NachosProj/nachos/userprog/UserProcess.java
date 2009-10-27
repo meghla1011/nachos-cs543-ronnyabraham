@@ -945,19 +945,16 @@ public class UserProcess {
 
 		//remove the process from the list
 		activeProcesses.remove(processId);
+
+		// Assign  the status
+		this.status = a0;
+
 		
 		if ( activeProcesses.size() == 0 )
 		{
 			//If this is the last process then call terminate
 			UserKernel.kernel.terminate();
-			
 		}
-
-		// Assign  the status
-		this.status = a0;
-
-		// Kill the thread
-		KThread.finish();
 		
         return returnValue;
     }
@@ -1015,7 +1012,7 @@ public class UserProcess {
     private static final char dbgProcess = 'a';
     private Vector<Integer> childprocessList = new Vector<Integer>();
     private static Map <Integer, UserProcess> activeProcesses = new HashMap <Integer, UserProcess> ();
-    private static int processId =-1;
+    private int processId =-1;
     private static int nextProcessId = 0;
     private static final int statusFinished = 4;
     private LinkedList <String> deleteList = new LinkedList<String> ();
