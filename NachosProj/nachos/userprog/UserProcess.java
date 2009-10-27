@@ -910,7 +910,11 @@ public class UserProcess {
 		
 
 		if ( childprocess.status != this.statusFinished )
+		{
+			// shouldn't this be - 
+			//childprocess.currThread.join();
 			currThread.join();
+		}
 		else
 		{
 			byte [] data = Lib.bytesFromInt(0);
