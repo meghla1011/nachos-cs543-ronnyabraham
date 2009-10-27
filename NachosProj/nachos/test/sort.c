@@ -42,6 +42,7 @@ main()
 
   /* and last, verify */
   for (i=0; i<SORTSIZE; i++) {
+    //printf("%d\n",A(i));
     if (A(i) != i)
       return 1;
   }

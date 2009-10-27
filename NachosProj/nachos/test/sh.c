@@ -121,6 +121,7 @@ void runline(char* line) {
     if (argc > 0 && strcmp(argv[argc-1], "&") == 0) {
 	argc--;
 	background = 1;
+	printf("running in background\n");
     }
     else {
 	background = 0;
@@ -140,7 +141,7 @@ void runline(char* line) {
 	    }
 	}
 	else if (strcmp(argv[0], "halt")==0) {
-	    printf("HALTTTT is reached \n");
+	    
 	    if (argc == 1) {
 		halt();
 		printf("Not the root process!\n");
@@ -160,10 +161,12 @@ void runline(char* line) {
 	    }
 	}
 	else {
+	    printf("program name is %s",prog);
 	    strcpy(prog, argv[0]);
 	    strcat(prog, ".coff");
 
 	    pid = exec(prog, argc, argv);
+		printf("launched process with id %d\n",pid);
 	    if (pid == -1) {
 		printf("%s: exec failed.\n", argv[0]);
 		return;
@@ -190,17 +193,15 @@ void runline(char* line) {
 }
 
 int main(int argc, char *argv[]) {
-    char prompt[] = "nachos% ";
-
-    char buffer[BUFFERSIZE] = "create";
-	//char buffer[BUFFERSIZE];
-
+    //char prompt[] = "nachos% ";
     //while (1) {
-	printf("%s", prompt);
-    
+	//printf("%s", prompt);    
 	//readline(buffer, BUFFERSIZE);
-   
-	runline(buffer);
+    //char buffer[BUFFERSIZE];       
+	
+	runline("sort &");
+	runline("sort &");
+	
     //}
 }
 

@@ -894,6 +894,7 @@ public class UserProcess {
     
     private int handleJoin(int a0,int a1)
     {
+    	System.out.println("Invoking handleJoin");
         int returnValue = 1;
      
         //If we cannot find the child process return
@@ -931,14 +932,13 @@ public class UserProcess {
 		//END:
 		
         int returnValue = 0;
-     //todo Balaji Close the file descriptorList here 
-        /*
-		for ( int i = 0; i < descriptorList.length; i++ )
+             
+		for ( int i = 0; i < fileDescriptors.length; i++ )
 		{
-			if ( descriptorList[i] != null )
+			if ( fileDescriptors[i] != null )
 				handleClose(i);
 		}
-		*/
+		
 
 		// Next, unload the sections
 		unloadSections(); 
@@ -947,13 +947,18 @@ public class UserProcess {
 		activeProcesses.remove(processId);
 		
 		if ( activeProcesses.size() == 0 )
+		{
+			//If this is the last process then call terminate
 			UserKernel.kernel.terminate();
+			
+		}
 
 		// Assign  the status
 		this.status = a0;
 
 		// Kill the thread
-		KThread.finish(); 
+		KThread.finish();
+		
         return returnValue;
     }
 
@@ -1010,8 +1015,8 @@ public class UserProcess {
     private static final char dbgProcess = 'a';
     private Vector<Integer> childprocessList = new Vector<Integer>();
     private static Map <Integer, UserProcess> activeProcesses = new HashMap <Integer, UserProcess> ();
-    private int processId =-1;
-    private int nextProcessId = 0;
+    private static int processId =-1;
+    private static int nextProcessId = 0;
     private static final int statusFinished = 4;
     private LinkedList <String> deleteList = new LinkedList<String> ();
     private OpenFile[] fileDescriptors = new OpenFile[18];
