@@ -9,7 +9,7 @@
 #		setenv ARCHDIR ../mips-x86.win32-xgcc
 
 # you need to point to the right executables
-ARCHDIR = /cygdrive/c/mips
+#ARCHDIR = /cygdrive/c/mips
 GCCDIR = $(ARCHDIR)/mips-
 
 ASFLAGS = -mips1
@@ -31,7 +31,7 @@ STDLIB_O = start.o stdio.o stdlib.o
 LIB = assert atoi printf readline stdio strncmp strcat strcmp strcpy strlen memcpy memset
 NLIB = libnachos.a
 
-TARGETS = create open createClose openClose read write unlink readStream writeStream stdInStdOutTest halt sh matmult sort echo cat cp mv rm shJoin joinTest #chat chatserver
+TARGETS = create open createClose openClose read write unlink readStream writeStream stdInStdOutTest halt sh matmult sort echo cat cp mv rm shJoin joinTest execTest #chat chatserver
 
 .SECONDARY: $(patsubst %.c,%.o,$(wildcard *.c))
 
