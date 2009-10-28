@@ -8,5 +8,5 @@
 ::java -cp c:\Users\admin\svn\nachos\NachosProj\nachos\proj2\  nachos.machine.Machine   -x write.coff
 ::java -cp c:\Users\admin\svn\nachos\NachosProj\nachos\proj2\  nachos.machine.Machine   -x unlink.coff
 ::java -cp c:\Users\admin\svn\nachos\NachosProj\nachos\proj2\  nachos.machine.Machine   -x sort.coff
-java -cp c:\Users\admin\svn\nachos\NachosProj\nachos\proj2\  nachos.machine.Machine   -x shJoin.coff
-::java -cp c:\Users\admin\svn\nachos\NachosProj\nachos\proj2\  nachos.machine.Machine   -x joinTest.coff
+::java -cp c:\Users\admin\svn\nachos\NachosProj\nachos\proj2\  nachos.machine.Machine   -x shJoin.coff
+java -cp c:\Users\admin\svn\nachos\NachosProj\nachos\proj2\  nachos.machine.Machine   -x joinTest.coff
