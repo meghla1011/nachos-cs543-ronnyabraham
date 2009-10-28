@@ -894,7 +894,8 @@ public class UserProcess {
     
     private int handleJoin(int a0,int a1)
     {
-    	System.out.println("Invoking handleJoin");
+    	System.out.println("Invoking handleJoin with child id "+a0);
+    	System.out.println("process id of the parent "+processId);
         int returnValue = 1;
      
         //If we cannot find the child process return
@@ -912,8 +913,8 @@ public class UserProcess {
 		if ( childprocess.status != this.statusFinished )
 		{
 			// shouldn't this be - 
-			//childprocess.currThread.join();
-			currThread.join();
+			childprocess.currThread.join();
+			//currThread.join();
 		}
 		else
 		{
