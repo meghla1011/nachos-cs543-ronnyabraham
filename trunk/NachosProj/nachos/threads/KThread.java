@@ -286,7 +286,8 @@ public class KThread {
         if(status != statusFinished)
         {
                 // wait for the sema4 to be decremented back to 0 when the other thread will be done
-                threadDoneSignal.P();
+        	    if(threadDoneSignal != null)
+        	    	threadDoneSignal.P();
         }
         Lib.assertTrue(this != currentThread);
 
