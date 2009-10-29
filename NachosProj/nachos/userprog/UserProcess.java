@@ -60,15 +60,9 @@ public class UserProcess {
 		if (memoryManager == null)
 		{
 			Lib.debug(dbgProcess, "memory manager is null");
-			//TODO:  Assert here?
 		}
 			
 		virtualMemory = memoryManager.getPages(numPhysPages);
-		
-		if (virtualMemory == null)
-		{
-			//TODO:  call handleExit?
-		}
 		
 		int ppn = 0;
 		Page currentPage;
@@ -223,9 +217,6 @@ public class UserProcess {
 		realMemOffset = 0;
 	}
 	
-	//Lib.debug(dbgProcess, "copying " + amount + " bytes from memory position " + realPageNumber + realMemOffset + " to destination offset " + newOffset);
-	
-	//arraycopy parameters: (src, src_position, destination, destination_position, length)
 	System.arraycopy(memory, (realPageNumber*pageSize) + realMemOffset, data, newOffset, amount);
 
 	return amount;
@@ -313,9 +304,7 @@ public class UserProcess {
      */
     private boolean load(String name, String[] args) {
 	Lib.debug(dbgProcess, "UserProcess.load(\"" + name + "\")");
-	
-	//TODO:  Handle coff sections that are read only
-	
+		
 	OpenFile executable = ThreadedKernel.fileSystem.open(name, false);
 	if (executable == null) {
 	    Lib.debug(dbgProcess, "\topen failed");
@@ -840,7 +829,6 @@ public class UserProcess {
 	case syscallExec:
 		System.out.println("system call syscallExec");
 		return handleExec(a0,a1,a2);
-		//return -1;
 	case syscallJoin:
 		return handleJoin(a0,a1);
 	case syscallExit:
@@ -931,10 +919,10 @@ public class UserProcess {
     
     private int handleExit(int a0)
     {
-    	//BEGIN:This needs to be done if exiting cleanly, where does this call go if not a clean exit?
+
 		MemoryManager memoryManager = UserKernel.memoryManager; 
 		memoryManager.freePages(virtualMemory);
-		//END:
+
 		
         int returnValue = 0;
              

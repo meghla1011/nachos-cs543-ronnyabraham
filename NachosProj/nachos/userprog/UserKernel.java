@@ -27,9 +27,10 @@ public class UserKernel extends ThreadedKernel {
     	super.initialize(args);
 
     	int numPhysPages = Machine.processor().getNumPhysPages();
-//    	pageList = new PageList(numPhysPages);//TODO: not quite right
 
     	console = new SynchConsole(Machine.console());
+    	
+    	//Create a new memory Manager with the desired number of pages
     	memoryManager = new MemoryManager(numPhysPages);
 
     	Machine.processor().setExceptionHandler(new Runnable() {
@@ -37,11 +38,6 @@ public class UserKernel extends ThreadedKernel {
     	});
     }
     
-//    public static LinkedList<Page> getPageList()
-//    {
-//    	return memoryManager;
-//    }
-
     /**
      * Test the console device.
      */	
@@ -133,34 +129,43 @@ public class UserKernel extends ThreadedKernel {
 
     public static MemoryManager memoryManager;
      
-    
+    /*This page represents the Page, the value is the page number*/
     public class Page
     {
+    	/*The constructor requires the page number*/
     	public Page(int aValue) 
     	{
     		value = aValue;
     	}
-    	
+    	/*Set Value sets the page number, it requires an int*/
     	public void setValue(int aValue)
     	{
     		value = aValue;
     	}
-    	
+
+    	/*Get Value gets the page number, it returns an int*/
     	public int getValue()
     	{
     		return value;
     	}
-     	    	
+     	
+    	//The value is the page number
     	private int value;
     }
 
+    /*The Memory Manger class manages the List of Pages,
+    the Linked List supports the ability to use non-consectuative pages.
+    The methods are initialize, get pages, and free pages.*/
     public class MemoryManager
     {
+    	/*The constructor requires the number of pages,
+    	 *  or the inital length of the linkedlist*/
     	private MemoryManager(int aLength) 
     	{
     		lock = new Lock();
     		initialize(aLength);
     	}
+    	/*Initalizes the linked list of the memory manager*/
     	private void initialize(int length)
     	{
     		memoryManager = new LinkedList<Page>();
@@ -171,7 +176,8 @@ public class UserKernel extends ThreadedKernel {
         	}
         	
     	}
-    	
+    	/*Returns a linkedlist with the length of pages as virtual memory.  
+    	 * Performs locking to ensure only one proecss accesses the memory manager at a time*/
     	public LinkedList<Page> getPages(int pagesWanted) throws NoSuchElementException
     	{
     		LinkedList<Page> returnList = null;
@@ -194,6 +200,8 @@ public class UserKernel extends ThreadedKernel {
     		return returnList;	
     	}
     	
+    	/*Frees the virtual memory and adds it to the overall memory available.  
+    	 * Performs locking to ensure only one proecss accesses the memory manager at a time*/
     	public void freePages(LinkedList<Page> usedPages)
     	{
     		if (! lock.isHeldByCurrentThread())
@@ -207,8 +215,9 @@ public class UserKernel extends ThreadedKernel {
     		lock.release();
     		return;	
     	}
-    	
+    	/*The linked list of Pages that represents the available system memory*/
     	private LinkedList<Page> memoryManager;
+    	/*Lock provides a way to ensure only one process is accessing the memory manager*/
     	private Lock lock;	
     }
     
