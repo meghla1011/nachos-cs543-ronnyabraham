@@ -51,7 +51,19 @@ public class UserProcess {
 			String errorMsg = "UserProcess::UserProcess Failed to open file for writing";
 			Lib.debug(dbgProcess, errorMsg);	
 		}
+
+		processId = nextProcessId;
+		nextProcessId++;
+		activeProcesses.put(processId, this);
 		
+		initializeMemory();
+	}
+    
+    /**
+     * Initializes Memory as required for a User Process
+     */
+	protected void initializeMemory()
+	{
 		//Each process will be allocated 15 pages, since 8 did not seem to be sufficient
 		int numPhysPages = 15;
 		pageTable = new TranslationEntry[numPhysPages];
@@ -72,12 +84,50 @@ public class UserProcess {
 			ppn = currentPage.getValue();
 			pageTable[i] = new TranslationEntry(i,ppn, true,false,false,false);
 		}
-
-		processId = nextProcessId;
-		nextProcessId++;
-		activeProcesses.put(processId, this);
 	}
-    
+	
+    /**
+     * Destroys the memory when exiting from a User Process
+     */
+	protected void destoryMemory()
+	{
+		MemoryManager memoryManager = UserKernel.memoryManager; 
+		memoryManager.freePages(virtualMemory);
+	}
+	
+    /**
+     * Returns whether an address is valid  
+     *
+     * @return	the validity of the address.
+     */
+	protected boolean isValidMemoryAddress(int possibleAddress)
+	{
+		return (possibleAddress < 0 || possibleAddress
+				>= virtualMemory.size() * pageSize);
+	}
+	
+    /**
+     * Sets any required read flags  
+     *
+     * @param	the virtual page number.
+     */
+	protected void setReadFlags(int vpn)
+	{
+    	pageTable[vpn].used = true;
+	}
+	
+    /**
+     * Sets any required write flags  
+     *
+     * @param	the virtual page number.
+     */
+	protected void setWriteFlags(int vpn)
+	{
+    	pageTable[vpn].used = true;
+    	pageTable[vpn].dirty = true;
+	}
+	
+	
     /**
      * Allocate and return a new process of the correct class. The class name
      * is specified by the <tt>nachos.conf</tt> key
@@ -189,12 +239,13 @@ public class UserProcess {
 	byte[] memory = Machine.processor().getMemory();
 	
 	// performs virtual addresses to physical addresses mapping
-	if (vaddr < 0 || vaddr >= virtualMemory.size() * pageSize)
+	if (! isValidMemoryAddress(vaddr))
 	    return 0;
 	
 	int virtualPageNumber = vaddr / pageSize;
 	int realMemOffset = vaddr % pageSize;
-	int realPageNumber = pageTable[virtualPageNumber].ppn;
+	int realPageNumber = returnFrameNumber(virtualPageNumber, realMemOffset);
+	setReadFlags(virtualPageNumber);
 	
 	int amount = Math.min(length, memory.length-vaddr);
 
@@ -213,7 +264,8 @@ public class UserProcess {
 		newOffset = newOffset + amountToWrite;
 		
 		virtualPageNumber++;
-		realPageNumber = pageTable[virtualPageNumber].ppn;
+		realPageNumber = returnFrameNumber(virtualPageNumber, 0);
+		setReadFlags(virtualPageNumber);
 		realMemOffset = 0;
 	}
 	
@@ -258,11 +310,12 @@ public class UserProcess {
 
 	byte[] memory = Machine.processor().getMemory();
 	// performs virtual addresses to physical addresses mapping
-	if (vaddr < 0 || vaddr >= virtualMemory.size() * pageSize)
+	if (! isValidMemoryAddress(vaddr))
 	    return 0;
 	int virtualPageNumber = vaddr / pageSize;
 	int realMemOffset = vaddr % pageSize;
-	int realPageNumber = pageTable[virtualPageNumber].ppn;
+	int realPageNumber = returnFrameNumber(virtualPageNumber, realMemOffset);
+	setWriteFlags(virtualPageNumber);
 	
 	int amount = Math.min(length, memory.length-vaddr);
 
@@ -282,7 +335,8 @@ public class UserProcess {
 		newOffset = newOffset + amountToWrite;
 		
 		virtualPageNumber++;
-		realPageNumber = pageTable[virtualPageNumber].ppn;
+		realPageNumber = returnFrameNumber(virtualPageNumber, 0);
+		setWriteFlags(virtualPageNumber);
 		realMemOffset = 0;
 	}
 
@@ -920,8 +974,7 @@ public class UserProcess {
     private int handleExit(int a0)
     {
 
-		MemoryManager memoryManager = UserKernel.memoryManager; 
-		memoryManager.freePages(virtualMemory);
+    	destoryMemory();
 
 		
         int returnValue = 0;
@@ -983,6 +1036,19 @@ public class UserProcess {
     		Lib.assertNotReached("Unexpected exception");
     	}
     }
+    
+    /**
+     * returns the Frame Number using the implementation
+     *  required for a User Process
+     *
+     * @return	the frame number associated with that page
+     *  number.
+     */
+    protected int returnFrameNumber(int virtualPageNumber, int offset)
+    {
+    	int realPageNumber = pageTable[virtualPageNumber].ppn;
+    	return realPageNumber;
+    }
 
     /** The program being run by this process. */
     protected Coff coff;
@@ -1005,7 +1071,7 @@ public class UserProcess {
     private static final char dbgProcess = 'a';
     private Vector<Integer> childprocessList = new Vector<Integer>();
     private static Map <Integer, UserProcess> activeProcesses = new HashMap <Integer, UserProcess> ();
-    private int processId =-1;
+    protected int processId =-1;
     private static int nextProcessId = 0;
     private static final int statusFinished = 4;
     private LinkedList <String> deleteList = new LinkedList<String> ();

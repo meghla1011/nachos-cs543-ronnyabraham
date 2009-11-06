@@ -26,16 +26,25 @@ public class UserKernel extends ThreadedKernel {
     {
     	super.initialize(args);
 
-    	int numPhysPages = Machine.processor().getNumPhysPages();
-
     	console = new SynchConsole(Machine.console());
     	
-    	//Create a new memory Manager with the desired number of pages
-    	memoryManager = new MemoryManager(numPhysPages);
+    	initializeGlobalMemory();
 
     	Machine.processor().setExceptionHandler(new Runnable() {
     		public void run() { exceptionHandler(); }
     	});
+    }
+    
+    /**
+     * Initializes the global memory.
+     */  
+    protected void initializeGlobalMemory()
+    {
+    	int numPhysPages = Machine.processor().getNumPhysPages();
+    	
+    	//Create a new memory Manager with the desired number of pages
+    	memoryManager = new MemoryManager(numPhysPages);
+		System.out.println("In UserKernel, initializeGlobalMemory.");
     }
     
     /**
