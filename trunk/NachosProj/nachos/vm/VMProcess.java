@@ -1,6 +1,7 @@
 package nachos.vm;
 
 import java.util.Enumeration;
+import java.util.Hashtable;
 
 import nachos.machine.*;
 import nachos.threads.*;
@@ -57,7 +58,7 @@ public class VMProcess extends UserProcess {
     @Override
 	protected void setReadFlags(int vpn)
 	{
-    	VMKernel.tlb.setUsed(processId, true);
+    	VMKernel.tlb.setUsed(processId, vpn, true);
 	}
 	
     /**
@@ -68,8 +69,8 @@ public class VMProcess extends UserProcess {
     @Override
 	protected void setWriteFlags(int vpn)
 	{
-    	VMKernel.tlb.setDirty(processId, true);
-    	VMKernel.tlb.setUsed(processId, true);
+    	VMKernel.tlb.setDirty(processId, vpn, true);
+    	VMKernel.tlb.setUsed(processId, vpn, true);
 	}
     
     /**
@@ -77,24 +78,23 @@ public class VMProcess extends UserProcess {
      * Called by <tt>UThread.saveState()</tt>.
      */
     public void saveState() {
-//	super.saveState();//may need to implement this
-//	Enumeration<Integer> e = VMKernel.tlb.getKeys();
-//	while (e.hasMoreElements())
-//	{
-//		Integer integerValue = e.nextElement();
-//		int intValue = integerValue.intValue();
-//		TranslationEntry translationEntry =  VMKernel.tlb.getTranslationEntry(intValue);
-//		if (translationEntry.dirty)
-//		{
-//			//TODO:writeToDisk(intValue, translationEntry)
-//		}
-//		VMKernel.tlb.setValid(intValue, false);
-//	}
-    	if ( VMKernel.tlb.isDirty(processId))
+    	
+    	Hashtable<Integer, TranslationEntry> translationEntryMapping =
+    		VMKernel.tlb.getTranslationEntryMappingForProcessId(processId);
+    	
+    	Enumeration<Integer> e =translationEntryMapping.keys();
+    	
+    	while (e.hasMoreElements())
     	{
-    		//TODO:writeToDisk(intValue, translationEntry)
+    		Integer integerValue = e.nextElement();
+    		int virtualPageNumber = integerValue.intValue();
+    		if (VMKernel.tlb.isDirty(processId, virtualPageNumber))
+    		{
+    			//TODO:writeToDisk(intValue, translationEntry)
+    		}
+    		VMKernel.tlb.setValid(processId, virtualPageNumber, false);
     	}
-    	VMKernel.tlb.setValid(processId, false);
+    	
     }
 
     /**
@@ -102,8 +102,8 @@ public class VMProcess extends UserProcess {
      * <tt>UThread.restoreState()</tt>.
      */
     public void restoreState() {
-//	super.restoreState();
 //	TODO: readFromDisk(intValue, translationEntry)
+    	Lib.assertTrue(false, "Group 10 - What needs to be done on restoreState");
     	
     }
 
@@ -114,14 +114,39 @@ public class VMProcess extends UserProcess {
      * @return	<tt>true</tt> if successful.
      */
     protected boolean loadSections() {
-	return super.loadSections();//TODO: change
+ 	if (numPages > Machine.processor().getNumPhysPages() ) {
+	    coff.close();
+	    Lib.debug(dbgProcess, "\tinsufficient physical memory");
+	    return false;
+	}
+
+	// load sections
+	for (int s=0; s<coff.getNumSections(); s++) {
+	    CoffSection section = coff.getSection(s);
+	    
+	    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+		      + " section (" + section.getLength() + " pages)");
+
+	    for (int i=0; i<section.getLength(); i++) {
+		int vpn = section.getFirstVPN()+i;
+
+		int physicalAddress = VMKernel.tlb.getPhysicalPageNumber(processId, vpn);
+		
+		// map virtual addresses to physical addresses
+		section.loadPage(i, physicalAddress);
+	    }
+	}
+	
+	return true;
     }
 
     /**
      * Release any resources allocated by <tt>loadSections()</tt>.
      */
     protected void unloadSections() {
-	super.unloadSections();
+    	/*call saveState, which write everything to disk,
+    	 *  thus everything is unloaded*/
+    	saveState();
     }    
 
     /**

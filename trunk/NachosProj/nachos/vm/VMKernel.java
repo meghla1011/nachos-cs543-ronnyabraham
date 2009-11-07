@@ -36,7 +36,6 @@ public class VMKernel extends UserKernel {
     protected void initializeGlobalMemory()
     {
     	tlb = new InvertedPageTable();
-//		System.out.println("In VMKernel, initializeGlobalMemory.  IT WORKS!!!");
     }
     
     
@@ -68,15 +67,34 @@ public class VMKernel extends UserKernel {
     
     public static InvertedPageTable tlb;
     
+    /**
+     * The Translation Look-aside Buffer (TLB)
+     *  is represented as a global Inverted Page Table.
+     *  
+     *  The InvertedPageTable class is represented as follows:
+     *  
+     *  Hashtable <processId, Hashtable <virtualPageNumber, TranslationEntry>>
+     *  Nested Hashtables are required to represent the 1 to many relationship
+     *     between processId and the mapping to virtualpageNumbers to 
+     *     TranslationEntries (as a process can have more than 1 page).
+     *     The virtualPageNumber will also be contained within the TranslationEntry
+     *  
+     *  All methods within the InvertedPageTable class performs locking,
+     *  so the methods are thread safe.
+     */
     public class InvertedPageTable
     {
 
     	private InvertedPageTable() 
     	{
     		lock = new Lock();
-    		invertedPageTable = new Hashtable<Integer, TranslationEntry>(Machine.processor().getTLBSize());
+    		invertedPageTable = new Hashtable<Integer, 
+    		Hashtable <Integer, TranslationEntry>>
+    		(Machine.processor().getTLBSize());
     	}
-
+        /**
+         * Gets the physical Page number given a process id and virtual page number 
+         */
     	public int getPhysicalPageNumber(int processId, int virtualPageNumber)
     	{
     		if (! lock.isHeldByCurrentThread())
@@ -85,44 +103,59 @@ public class VMKernel extends UserKernel {
     		}
     		
     		int returnValue = -1;
-    		TranslationEntry translationEntry = invertedPageTable.get(processId);
-    		if (translationEntry.vpn == virtualPageNumber)
-    		{
-    			returnValue = translationEntry.ppn;
-    		}
+    		TranslationEntry translationEntry = 
+    			invertedPageTable.get(processId).get(virtualPageNumber);
+    		returnValue = translationEntry.ppn;
     		lock.release();
     		
     		return returnValue;	
     	}
     	
+        /**
+         * Adds an entry to the TLB 
+         */
     	public void addToInvertedPageTable(int processId, int virtualPageNumber, int physicalPageNumber)
     	{
     		if (! lock.isHeldByCurrentThread())
     		{
     			lock.acquire();
     		}
+    		TranslationEntry translationEntry = 
+    			new TranslationEntry(virtualPageNumber, 
+    					physicalPageNumber, true,false,false,false);
     		
-    		invertedPageTable.put(new Integer(processId), 
-    				new TranslationEntry(virtualPageNumber, physicalPageNumber, true,false,false,false));
+    		Integer processIdInt = new Integer(processId);
+    		Integer virtualPageNumberInt = new Integer(virtualPageNumber);
+    		Hashtable<Integer, TranslationEntry> innerHashtable =
+    			new Hashtable<Integer, TranslationEntry>();
+    		innerHashtable.put(virtualPageNumberInt, translationEntry);
+    		
+    		invertedPageTable.put(processIdInt, innerHashtable);
     		
     		lock.release();
     		return;	
     	}
     	
-
-    	public TranslationEntry getTranslationEntry(int processId)
+        /**
+         * Returns the translation entry, given a process Id and virtual page number 
+         */
+    	public TranslationEntry getTranslationEntry(int processId, int virtualPageNumber)
     	{
     		if (! lock.isHeldByCurrentThread())
     		{
     			lock.acquire();
     		}
     		
-    		TranslationEntry returnValue = invertedPageTable.get(processId);
+    		TranslationEntry returnValue = 
+    			invertedPageTable.get(processId).get(virtualPageNumber);
     		lock.release();
     		
     		return returnValue;	
     	}
     	
+        /**
+         * Adds an entry to the TLB 
+         */
     	public void addToInvertedPageTable(int processId, TranslationEntry translationEntry)
     	{
     		if (! lock.isHeldByCurrentThread())
@@ -130,64 +163,92 @@ public class VMKernel extends UserKernel {
     			lock.acquire();
     		}
     		
-    		invertedPageTable.put(new Integer(processId), translationEntry);
+    		Integer processIdInt = new Integer(processId);
+    		int virtualPageNumber = translationEntry.vpn;
+    		Integer virtualPageNumberInt = new Integer(virtualPageNumber);
+    		Hashtable<Integer, TranslationEntry> innerHashtable =
+    			new Hashtable<Integer, TranslationEntry>();
+    		innerHashtable.put(virtualPageNumberInt, translationEntry);
+    		
+    		invertedPageTable.put(processIdInt, innerHashtable);
     		
     		lock.release();
     		return;	
     	}
-    	
-    	public void setDirty(int processId, boolean value)
+        /**
+         * Sets the dirty flag for the given process id and virtualPageNumber
+         *  within an entry of the TLB 
+         */
+    	public void setDirty(int processId, int virtualPageNumber, boolean value)
     	{
     		if (! lock.isHeldByCurrentThread())
     		{
     			lock.acquire();
     		}
 
-    		TranslationEntry currentValue = invertedPageTable.get(processId);
+    		TranslationEntry currentValue = 
+    			invertedPageTable.get(processId).get(virtualPageNumber);
     		currentValue.dirty = value;
     		lock.release();
 
     	}
-    	
-    	public boolean isDirty(int processId)
+        /**
+         * Checks the dirty flag for the given process id and virtualPageNumber
+         *  within an entry of the TLB 
+         */    	
+    	public boolean isDirty(int processId, int virtualPageNumber)
     	{
     		if (! lock.isHeldByCurrentThread())
     		{
     			lock.acquire();
     		}
 
-    		TranslationEntry currentValue = invertedPageTable.get(processId);
+    		TranslationEntry currentValue = 
+    			invertedPageTable.get(processId).get(virtualPageNumber);
+    		
     		boolean returnValue =  currentValue.dirty;
     		lock.release();
     		return returnValue;
 
     	}
     	
-    	
-    	public void setUsed(int processId, boolean value)
+        /**
+         * Sets the used flag for the given process id and virtualPageNumber
+         *  within an entry of the TLB 
+         */
+    	public void setUsed(int processId, int virtualPageNumber, boolean value)
     	{
     		if (! lock.isHeldByCurrentThread())
     		{
     			lock.acquire();
     		}
 
-    		TranslationEntry currentValue = invertedPageTable.get(processId);
+    		TranslationEntry currentValue = 
+    			invertedPageTable.get(processId).get(virtualPageNumber);
     		currentValue.used = value;
     		lock.release();
     	}
     	
-    	public void setValid(int processId, boolean value)
+        /**
+         * Sets the valid flag for the given process id and virtualPageNumber
+         *  within an entry of the TLB 
+         */
+    	public void setValid(int processId, int virtualPageNumber, boolean value)
     	{
     		if (! lock.isHeldByCurrentThread())
     		{
     			lock.acquire();
     		}
 
-    		TranslationEntry currentValue = invertedPageTable.get(processId);
+    		TranslationEntry currentValue = 
+    			invertedPageTable.get(processId).get(virtualPageNumber);
     		currentValue.valid = value;
     		lock.release();
     	}
     	
+        /**
+         * Returns an enumeration of all the processIds within the TLB 
+         */
     	public Enumeration<Integer> getKeys()
     	{
     		if (! lock.isHeldByCurrentThread())
@@ -201,7 +262,25 @@ public class VMKernel extends UserKernel {
 
     	}
     	
-    	private Hashtable<Integer, TranslationEntry> invertedPageTable;
+        /**
+         * Returns all the virtualPageNumber to TranslationEntry for a given processId
+         */
+    	public Hashtable<Integer, TranslationEntry> getTranslationEntryMappingForProcessId(int processId)
+    	{
+    		if (! lock.isHeldByCurrentThread())
+    		{
+    			lock.acquire();
+    		}
+    		Integer processIdInteger = new Integer(processId);
+    		Hashtable<Integer, TranslationEntry> returnValue = 
+    			invertedPageTable.get(processIdInteger);
+
+    		lock.release();
+    		return returnValue;
+
+    	}
+    	
+    	private Hashtable<Integer, Hashtable<Integer,TranslationEntry>> invertedPageTable;
 
     	private Lock lock;	
     }
