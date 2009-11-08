@@ -169,7 +169,7 @@ public class UserKernel extends ThreadedKernel {
     {
     	/*The constructor requires the number of pages,
     	 *  or the inital length of the linkedlist*/
-    	private MemoryManager(int aLength) 
+    	public MemoryManager(int aLength) 
     	{
     		lock = new Lock();
     		initialize(aLength);
@@ -225,7 +225,7 @@ public class UserKernel extends ThreadedKernel {
     		return;	
     	}
     	/*The linked list of Pages that represents the available system memory*/
-    	private LinkedList<Page> memoryManager;
+    	protected LinkedList<Page> memoryManager;
     	/*Lock provides a way to ensure only one process is accessing the memory manager*/
     	private Lock lock;	
     }

@@ -1054,11 +1054,11 @@ public class UserProcess {
     protected Coff coff;
 
     /** This process's page table. */
-    protected TranslationEntry[] pageTable;
+    private TranslationEntry[] pageTable;
     /** The number of contiguous pages occupied by the program. */
     protected int numPages;
 
-    LinkedList<Page> virtualMemory;
+    protected LinkedList<Page> virtualMemory;
 
     /** The number of pages in the program's stack. */
     protected final int stackPages = 8;
