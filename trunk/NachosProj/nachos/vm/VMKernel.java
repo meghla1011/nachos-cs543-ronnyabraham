@@ -35,7 +35,12 @@ public class VMKernel extends UserKernel {
      */  
     protected void initializeGlobalMemory()
     {
-    	tlb = new InvertedPageTable();
+    	int numPhysPages = Machine.processor().getNumPhysPages();
+    	
+    	//Create a new memory Manager with the desired number of pages
+    	memoryManager = new MemoryManager(numPhysPages);
+		
+    	ipt = new InvertedPageTable();
     }
     
     
@@ -50,7 +55,15 @@ public class VMKernel extends UserKernel {
      * Start running user programs.
      */
     public void run() {
-	super.run();//TODO:change
+    	super.run();
+//kikyfv
+//    	UserProcess process = UserProcess.newUserProcess();
+//    	
+//    	String shellProgram = Machine.getShellProgramName();	
+//    	System.out.println("shell program name is "+shellProgram);
+//    	Lib.assertTrue(process.execute(shellProgram, new String[] { }));
+//
+//    	KThread.currentThread().finish();
     }
     
     /**
@@ -65,11 +78,10 @@ public class VMKernel extends UserKernel {
 
     private static final char dbgVM = 'v';
     
-    public static InvertedPageTable tlb;
+    public static InvertedPageTable ipt;
     
     /**
-     * The Translation Look-aside Buffer (TLB)
-     *  is represented as a global Inverted Page Table.
+     * The global Inverted Page Table.
      *  
      *  The InvertedPageTable class is represented as follows:
      *  
@@ -90,21 +102,31 @@ public class VMKernel extends UserKernel {
     		lock = new Lock();
     		invertedPageTable = new Hashtable<Integer, 
     		Hashtable <Integer, TranslationEntry>>
-    		(Machine.processor().getTLBSize());
+    		(Machine.processor().getNumPhysPages());
     	}
         /**
          * Gets the physical Page number given a process id and virtual page number 
          */
     	public int getPhysicalPageNumber(int processId, int virtualPageNumber)
     	{
+  //  		Lib.debug(dbgVM, "Looking for processId: " + processId + " VPN: "+virtualPageNumber);
     		if (! lock.isHeldByCurrentThread())
     		{
     			lock.acquire();
     		}
     		
     		int returnValue = -1;
+
+    		Integer processIdInteger = new Integer(processId);
+    		Integer vpnInteger = new Integer(virtualPageNumber);
+    		
+    		Hashtable<Integer,TranslationEntry> innerTable = 
+    			invertedPageTable.get(processIdInteger);
+    		
     		TranslationEntry translationEntry = 
-    			invertedPageTable.get(processId).get(virtualPageNumber);
+    			innerTable.get(vpnInteger);
+    		
+    		
     		returnValue = translationEntry.ppn;
     		lock.release();
     		
@@ -116,6 +138,8 @@ public class VMKernel extends UserKernel {
          */
     	public void addToInvertedPageTable(int processId, int virtualPageNumber, int physicalPageNumber)
     	{
+  //  		Lib.debug(dbgVM, "addToInvertedPageTable: PID "+ processId + " VPN "+ virtualPageNumber + " PPN " + physicalPageNumber);
+    		
     		if (! lock.isHeldByCurrentThread())
     		{
     			lock.acquire();
@@ -126,11 +150,19 @@ public class VMKernel extends UserKernel {
     		
     		Integer processIdInt = new Integer(processId);
     		Integer virtualPageNumberInt = new Integer(virtualPageNumber);
-    		Hashtable<Integer, TranslationEntry> innerHashtable =
-    			new Hashtable<Integer, TranslationEntry>();
-    		innerHashtable.put(virtualPageNumberInt, translationEntry);
     		
-    		invertedPageTable.put(processIdInt, innerHashtable);
+    		Hashtable<Integer, TranslationEntry> innerHashtable =
+        		invertedPageTable.get(processIdInt);
+    		if (innerHashtable == null)
+    		{
+    			innerHashtable = new Hashtable<Integer, TranslationEntry>();
+        		innerHashtable.put(virtualPageNumberInt, translationEntry);
+        		invertedPageTable.put(processId, innerHashtable);//may/may not be needed
+    		}
+    		else
+    		{
+    			innerHashtable.put(virtualPageNumberInt, translationEntry);
+    		}
     		
     		lock.release();
     		return;	
@@ -146,12 +178,42 @@ public class VMKernel extends UserKernel {
     			lock.acquire();
     		}
     		
+    		
+    		
+    		
     		TranslationEntry returnValue = 
     			invertedPageTable.get(processId).get(virtualPageNumber);
     		lock.release();
     		
     		return returnValue;	
     	}
+    	
+        /**
+         * Removes the translation entry, given a process Id and virtual page number
+         * and returns that entry 
+         */
+    	public TranslationEntry removeTranslationEntry(int processId, int virtualPageNumber)
+    	{
+    		if (! lock.isHeldByCurrentThread())
+    		{
+    			lock.acquire();
+    		}
+    		
+
+    		Integer processIdInteger = new Integer(processId);
+    		Integer vpnInteger = new Integer(virtualPageNumber);
+    		
+    		Hashtable<Integer,TranslationEntry> innerTable = 
+    			invertedPageTable.get(processIdInteger);
+    		
+    		TranslationEntry translationEntry = 
+    			innerTable.get(vpnInteger);
+    		
+    		lock.release();
+    		
+    		return translationEntry;	
+    	}
+    	
     	
         /**
          * Adds an entry to the TLB 
@@ -166,11 +228,20 @@ public class VMKernel extends UserKernel {
     		Integer processIdInt = new Integer(processId);
     		int virtualPageNumber = translationEntry.vpn;
     		Integer virtualPageNumberInt = new Integer(virtualPageNumber);
-    		Hashtable<Integer, TranslationEntry> innerHashtable =
-    			new Hashtable<Integer, TranslationEntry>();
-    		innerHashtable.put(virtualPageNumberInt, translationEntry);
     		
-    		invertedPageTable.put(processIdInt, innerHashtable);
+    		Hashtable<Integer, TranslationEntry> innerHashtable =
+        		invertedPageTable.get(processIdInt);
+    		
+    		if (innerHashtable == null)
+    		{
+    			innerHashtable = new Hashtable<Integer, TranslationEntry>();
+        		innerHashtable.put(virtualPageNumberInt, translationEntry);
+        		invertedPageTable.put(processId, innerHashtable);//may/may not be needed
+    		}
+    		else
+    		{
+    			innerHashtable.put(virtualPageNumberInt, translationEntry);
+    		}
     		
     		lock.release();
     		return;	
