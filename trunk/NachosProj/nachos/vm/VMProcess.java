@@ -246,9 +246,8 @@ public class VMProcess extends UserProcess {
     	int virtualPageNumber = vaddr / pageSize;
     	int realMemOffset = vaddr % pageSize;
     	
-    	TranslationEntry iptTranslationEntry = 
-    		VMKernel.ipt.getTranslationEntry(processId, virtualPageNumber);
-    	
+    	// handle page fault
+    	TranslationEntry iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
     	
     	if (!tlbInitialized)
     	{
