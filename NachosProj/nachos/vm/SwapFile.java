@@ -45,24 +45,7 @@ public class SwapFile {
 		return te;
 	}
 
-	public void unloadSwapFile(int pid)
-	{
-		// Iterate through the slots, if they aren't from current pid, remove them
-		for (int i = 0; i < currentFileEntries.size(); i++)
-		{
-			if ( currentFileEntries.get(i).indexOf(",") != -1 && pid == Integer.valueOf(currentFileEntries.get(i).substring(0, currentFileEntries.get(i).indexOf(","))).intValue() )
-			{
-				currentFileEntries.set(i, "");
-				currentFileTE.set(i, null);
-			}
-		}
-	}
 
-	public void delete()
-	{
-		swapFile.close();
-		Machine.stubFileSystem().remove(swapFile.getName());
-	}
 
 	Vector <String> currentFileEntries = new Vector <String>();
 	Vector <TranslationEntry> currentFileTE = new Vector <TranslationEntry>();
