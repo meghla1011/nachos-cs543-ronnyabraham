@@ -9,7 +9,7 @@ public class SwappingFile {
 	 * class SwapFile
 	 * Implements page swapping in ant out of a disk
 	 */
-	public SwappingFile ()
+	public SwappingFile()
 	{
 		keys = new Vector<String>();
 		entries = new Vector<TranslationEntry>();
