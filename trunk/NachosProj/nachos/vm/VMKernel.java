@@ -106,7 +106,7 @@ public class VMKernel extends UserKernel {
     		invertedPageTable = new Hashtable<Integer, 
     		Hashtable <Integer, TranslationEntry>>
     		(Machine.processor().getNumPhysPages());
-    		swapF = new SwapFile();
+    		swapF = new SwappingFile();
     	}
         /**
          * Gets the physical Page number given a process id and virtual page number 
@@ -389,14 +389,14 @@ public class VMKernel extends UserKernel {
 			Machine.interrupt().setStatus(oldStatus);
     		if(toBeSwapped != null)
     		{
-    			swapF.writeToFile(processId, toBeSwapped.vpn, toBeSwapped);
+    			swapF.writePage(processId, toBeSwapped.vpn, toBeSwapped);
 				
 				// Take old page and remove it from page table
     			removeTranslationEntry(processId, toBeSwapped.vpn);
     		}
     		
     		
-    		TranslationEntry newTE = swapF.readFromFile(processId, virtualPageNum, toBeSwapped.ppn);
+    		TranslationEntry newTE = swapF.readPage(processId, virtualPageNum, toBeSwapped.ppn);
 
 			// It wasn't in swap file, then we create it
 			if ( newTE == null )
@@ -438,6 +438,6 @@ public class VMKernel extends UserKernel {
 
     	private Lock lock;	
     	
-    	private SwapFile swapF;
+    	private SwappingFile swapF;
     }
 }
