@@ -4,6 +4,9 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
+import java.util.Set;
+
+import javax.swing.text.html.HTMLDocument.Iterator;
 
 import nachos.machine.*;
 import nachos.threads.*;
@@ -103,6 +106,7 @@ public class VMKernel extends UserKernel {
     		invertedPageTable = new Hashtable<Integer, 
     		Hashtable <Integer, TranslationEntry>>
     		(Machine.processor().getNumPhysPages());
+    		swapF = new SwapFile();
     	}
         /**
          * Gets the physical Page number given a process id and virtual page number 
@@ -177,10 +181,7 @@ public class VMKernel extends UserKernel {
     		{
     			lock.acquire();
     		}
-    		
-    		
-    		
-    		
+   		
     		TranslationEntry returnValue = 
     			invertedPageTable.get(processId).get(virtualPageNumber);
     		lock.release();
@@ -351,8 +352,92 @@ public class VMKernel extends UserKernel {
 
     	}
     	
+    	public TranslationEntry handlePageFault(int processId, int virtualPageNum)
+    	{
+    		
+    		TranslationEntry iptTranslationEntry = getTranslationEntry(processId, virtualPageNum);
+    		if(iptTranslationEntry != null)
+    			return iptTranslationEntry;
+    	
+    		//now we will have to handle the condition of page fault
+    		if (! lock.isHeldByCurrentThread())
+    		{
+    			lock.acquire();
+    		}
+    		
+    		//Find the oldpage using clock algorithm
+    		TranslationEntry toBeSwapped = runClockAlgorithm(processId);
+    		
+    		boolean oldStatus = Machine.interrupt().setStatus(false);
+    		
+    		TranslationEntry newTLB = new TranslationEntry();
+		    newTLB.valid = false;
+		    //remove toBeSwapped tlb from processor TLB list
+			for (int i = 0; i < Machine.processor().getTLBSize(); i++)
+			{
+				TranslationEntry temp2 = Machine.processor().readTLBEntry(i);
+				if (temp2.vpn == toBeSwapped.vpn)
+				{
+					if (temp2.dirty)
+					{	
+						addToInvertedPageTable(processId,temp2);
+					}
+                    //This will clear the victim tlb
+					Machine.processor().writeTLBEntry(i, newTLB);
+				}
+			}
+			Machine.interrupt().setStatus(oldStatus);
+    		if(toBeSwapped != null)
+    		{
+    			swapF.writeToFile(processId, toBeSwapped.vpn, toBeSwapped);
+				
+				// Take old page and remove it from page table
+    			removeTranslationEntry(processId, toBeSwapped.vpn);
+    		}
+    		
+    		
+    		TranslationEntry newTE = swapF.readFromFile(processId, virtualPageNum, toBeSwapped.ppn);
+
+			// It wasn't in swap file, then we create it
+			if ( newTE == null )
+			{
+				addToInvertedPageTable(processId,virtualPageNum,toBeSwapped.ppn);
+			}
+			iptTranslationEntry = getTranslationEntry(processId, virtualPageNum);
+    		
+    		return iptTranslationEntry;
+    	}
+    	
+    	//In the clock algorithm we use the used bit as the reference bit
+    	//if the translation entry is used than we give it a second chance
+    	//the unused translation entry becomes the victim for swapping
+    	private TranslationEntry runClockAlgorithm(int processId)
+    	{
+    		Hashtable<Integer,TranslationEntry> listOfPages = invertedPageTable.get(processId);
+    		Enumeration<Integer> set = listOfPages.keys();
+
+    		for ( ; set.hasMoreElements() ;) {
+    			Integer key = set.nextElement();
+    			TranslationEntry te = listOfPages.get(key);
+    			if(te.used == false)
+      	    	  return te;
+    			else
+    			{    				
+    			    //second chance algorithm resets the used flag, so next time te will become
+    				//the victim to be swapped with the page in the swap file system. 
+    				te.used = true;
+    			}
+    	    }
+    		//should not reach here 
+    	    return null;
+    	}
+    	
+    	
+    	
     	private Hashtable<Integer, Hashtable<Integer,TranslationEntry>> invertedPageTable;
 
     	private Lock lock;	
+    	
+    	private SwapFile swapF;
     }
 }
