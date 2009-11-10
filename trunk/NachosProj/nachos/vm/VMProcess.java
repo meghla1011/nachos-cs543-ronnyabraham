@@ -1,5 +1,6 @@
 package nachos.vm;
 
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.Hashtable;
 
@@ -22,6 +23,13 @@ public class VMProcess extends UserProcess {
 	tlbIndexCounter = 0;
 	tlbInitialized = false;
 	tempFrameNumber = 0;
+	tlbImage = new int[Machine.processor().getTLBSize()];
+	
+	for (int i=0; i <tlbImage.length; i++)
+	{
+		tlbImage[i] = -1;
+	}
+	
     }
 
     /**
@@ -59,7 +67,7 @@ public class VMProcess extends UserProcess {
     @Override
 	protected void destoryMemory()
 	{
-		//no memory destruction required for tlb
+		super.destoryMemory();
 	}
 	
     /**
@@ -124,25 +132,13 @@ public class VMProcess extends UserProcess {
     		{
     			VMKernel.ipt.addToInvertedPageTable(
     					processId, translationEntry);
+    			tlbImage[i] = translationEntry.vpn;
+    		}
+    		else
+    		{
+    			tlbImage[i] = -1;
     		}
 	    }
-    	
-//    	
-//    	Hashtable<Integer, TranslationEntry> translationEntryMapping =
-//    		VMKernel.ipt.getTranslationEntryMappingForProcessId(processId);
-//    	
-//    	Enumeration<Integer> e =translationEntryMapping.keys();
-//    	
-//    	while (e.hasMoreElements())
-//    	{
-//    		Integer integerValue = e.nextElement();
-//    		int virtualPageNumber = integerValue.intValue();
-//    		if (VMKernel.ipt.isDirty(processId, virtualPageNumber))
-//    		{
-//    			//TODO:writeToDisk(intValue, translationEntry)
-//    		}
-//    		VMKernel.ipt.setValid(processId, virtualPageNumber, false);
-//    	}
     	
     }
 
@@ -152,23 +148,20 @@ public class VMProcess extends UserProcess {
      */
     public void restoreState() {
     	Processor processor = Machine.processor();
-    	Hashtable<Integer, TranslationEntry> innerTable = 
-    		VMKernel.ipt.getTranslationEntryMappingForProcessId(processId);
-    	int counter = 0;
-    	Enumeration<TranslationEntry> e = innerTable.elements();
-    	
-    	while (counter < processor.getTLBSize() && e.hasMoreElements())
+    	for (int i =0; i< processor.getTLBSize(); i++)
     	{
-    		TranslationEntry translationEntryToRemove = e.nextElement();
-    		processor.writeTLBEntry(counter, translationEntryToRemove);
-    		VMKernel.ipt.removeTranslationEntry(
-    				processId, translationEntryToRemove.vpn);
-    		counter++;
-    	}
-    	while (counter < processor.getTLBSize())
-    	{
-    		processor.writeTLBEntry(counter, 
-    				new TranslationEntry(0, 0, false, false, false, false));
+    		int virtualPageNumber = tlbImage[i];
+    		if (virtualPageNumber == -1)
+    		{
+        		processor.writeTLBEntry(i, 
+				new TranslationEntry(0, 0, false, false, false, false));
+    		}
+    		else
+    		{
+    			TranslationEntry translationEntry = 
+    				VMKernel.ipt.removeTranslationEntry(processId, virtualPageNumber);
+    			processor.writeTLBEntry(i, translationEntry);
+    		}
     	}
     }
 
@@ -310,6 +303,7 @@ public class VMProcess extends UserProcess {
     private int tlbIndexCounter;
     private boolean tlbInitialized;
     private static final int pageSize = Processor.pageSize;
+    private int[] tlbImage;
     private static final char dbgProcess = 'a';
     private static final char dbgVM = 'v';
 }
