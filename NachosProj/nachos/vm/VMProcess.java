@@ -38,9 +38,7 @@ public class VMProcess extends UserProcess {
     @Override
 	protected void initializeMemory()
 	{
-   	
-		//Each process will be allocated 15 pages, since 8 did not seem to be sufficient
-		int numPhysPages = 15;
+   		int numPages = 15;
 		MemoryManager memoryManager = UserKernel.memoryManager; 
 		
 		if (memoryManager == null)
@@ -48,11 +46,11 @@ public class VMProcess extends UserProcess {
 			Lib.debug(dbgProcess, "memory manager is null");
 		}
 			
-		virtualMemory = memoryManager.getPages(numPhysPages);
+		virtualMemory = memoryManager.getPages(numPages);
 		
 		int ppn = 0;
 		Page currentPage;
-		for (int i=0; i<numPhysPages; i++)
+		for (int i=0; i<numPages; i++)
 		{
 			currentPage = virtualMemory.get(i);
 			ppn = currentPage.getValue();
@@ -179,25 +177,48 @@ public class VMProcess extends UserProcess {
 	}
 
 	// load sections
-	for (int s=0; s<coff.getNumSections(); s++) {
-	    CoffSection section = coff.getSection(s);
-	    
-	    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
-		      + " section (" + section.getLength() + " pages)");
-
-	    for (int i=0; i<section.getLength(); i++) {
-		int vpn = section.getFirstVPN()+i;
-
-		int physicalAddress = VMKernel.ipt.getPhysicalPageNumber(processId, vpn);
-		
-		// map virtual addresses to physical addresses
-		section.loadPage(i, physicalAddress);
-	    }
-	}
+//	for (int s=0; s<coff.getNumSections(); s++) {
+//	    CoffSection section = coff.getSection(s);
+//	    
+//	    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
+//		      + " section (" + section.getLength() + " pages)");
+//
+//	    for (int i=0; i<section.getLength(); i++) {
+//		int vpn = section.getFirstVPN()+i;
+//
+//		int physicalAddress = VMKernel.ipt.getPhysicalPageNumber(processId, vpn);
+//		
+//		// map virtual addresses to physical addresses
+//		section.loadPage(i, physicalAddress);
+//	    }
+//	}
 	
 	return true;
     }
 
+    public void lazyLoadPage(int virtualPageNumber)
+    {
+    	// load sections
+    	for (int s=0; s<coff.getNumSections(); s++) 
+    	{
+    		CoffSection section = coff.getSection(s);
+
+    		for (int i=0; i<section.getLength(); i++) 
+    		{
+    			int vpn = section.getFirstVPN()+i;
+
+    			//find the vpn that we should load
+    			if (vpn == virtualPageNumber )
+    			{
+    				int physicalAddress = 
+    					VMKernel.ipt.getPhysicalPageNumber(processId, vpn);
+    				section.loadPage(i, physicalAddress);
+    			}
+    		}
+    	}
+    }
+    
+    
     /**
      * Release any resources allocated by <tt>loadSections()</tt>.
      */
@@ -241,7 +262,7 @@ public class VMProcess extends UserProcess {
     	
     	// handle page fault
     	TranslationEntry iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
-    	
+		lazyLoadPage(iptTranslationEntry.vpn);
     	if (!tlbInitialized)
     	{
     		processor.writeTLBEntry(tlbIndexCounter, iptTranslationEntry);
