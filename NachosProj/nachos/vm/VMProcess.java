@@ -287,7 +287,7 @@ public class VMProcess extends UserProcess {
 		
 		// handle page fault
     	 iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
-    	
+    	 writeTranslationEntryToTLB(iptTranslationEntry,processor);
 		//lazyLoadPage(iptTranslationEntry.vpn);
 		
 		
