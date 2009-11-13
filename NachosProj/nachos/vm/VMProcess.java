@@ -269,6 +269,7 @@ public class VMProcess extends UserProcess {
 		{
 			//write the translation entry to the TLB buffer
 		    writeTranslationEntryToTLB(iptTranslationEntry,processor);
+		    return;
 		}
     	//The inverted table does not have tlb entry 
 		int physicalPageSize = Machine.processor().getNumPhysPages();
@@ -281,10 +282,11 @@ public class VMProcess extends UserProcess {
 			int newPpn = VMKernel.getFreePage();
 			iptTranslationEntry = VMKernel.ipt.addToInvertedPageTable(processId,virtualPageNumber,newPpn);
 			writeTranslationEntryToTLB(iptTranslationEntry,processor);
+			return;
 		}
 		
 		// handle page fault
-    	iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
+    	 iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
     	
 		//lazyLoadPage(iptTranslationEntry.vpn);
 		

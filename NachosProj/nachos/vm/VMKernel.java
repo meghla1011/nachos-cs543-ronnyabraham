@@ -360,10 +360,8 @@ public class VMKernel extends UserKernel {
 
     	}
     	
-    	public TranslationEntry handlePageFault(int processId, int virtualPageNum)
-    	{
-    		
-    		
+    	public TranslationEntry handlePageFault(int processId, int virtualPageNum/*,int numPages,Coff coff*/)
+    	{    		    	
     		//Find the oldpage using clock algorithm
     		TranslationEntry toBeSwapped = runClockAlgorithm(processId);
     		
@@ -382,6 +380,21 @@ public class VMKernel extends UserKernel {
 			if ( newTE == null )
 			{
 				newTE = addToInvertedPageTable(processId,virtualPageNum,toBeSwapped.ppn);
+				/*
+				if ( virtualPageNum >= 0 && vpn < numPages ) 
+				{
+					CoffSection cs = coff.getSection(pageNum[vpn]);
+					cs.loadPage(pageOffset[vpn], ppn);
+					newTE.readOnly = cs.isReadOnly();
+				} 
+				else
+				{
+					// Erase it
+					byte[] data = Machine.processor().getMemory();
+					for ( int i = Processor.makeAddress(ppn, 0); i < (Processor.makeAddress(ppn, 0) + Processor.pageSize); i++ )
+						data[i] = 0;
+				}
+				*/
 			}
 			return newTE;
     	}
@@ -403,7 +416,7 @@ public class VMKernel extends UserKernel {
     			{    				
     			    //second chance algorithm resets the used flag, so next time te will become
     				//the victim to be swapped with the page in the swap file system. 
-    				te.used = true;
+    				te.used = false;
     			}
     	    }
     		//should not reach here 
