@@ -172,6 +172,11 @@ public class VMKernel extends UserKernel {
     		return translationEntry;	
     	}
     	
+    	public void cleanupProcessEntries(int pid)
+    	{
+    		invertedPageTable.remove(pid);
+    	}
+    	
         /**
          * Returns the translation entry, given a process Id and virtual page number 
          */
