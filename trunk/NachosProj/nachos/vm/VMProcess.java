@@ -216,6 +216,7 @@ public class VMProcess extends UserProcess {
 		Machine.interrupt().restore(stt);
 		// remove the translation entries for this process in the inverted page table
 		VMKernel.ipt.cleanupProcessEntries(processId);
+		
 		// cleanup the swap file from the entries fo this process
 		VMKernel.ipt.swapF.unloadSections(processId);
     }    
