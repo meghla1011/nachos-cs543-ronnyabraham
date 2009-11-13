@@ -263,7 +263,7 @@ public class VMProcess extends UserProcess {
 		}
     	//The inverted table does not have tlb entry 
 		int physicalPageSize = Machine.processor().getNumPhysPages();
-		int tlbSize = processor.getTLBSize();
+		int tlbSize = Machine.processor().getTLBSize();
 		//Inverted page table size is physical page size - tlbsize. 
 		if( VMKernel.ipt.iptSize(processId) < (physicalPageSize - tlbSize) )
 		{
