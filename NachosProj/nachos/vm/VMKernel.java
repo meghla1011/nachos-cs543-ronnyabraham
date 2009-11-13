@@ -104,7 +104,7 @@ public class VMKernel extends UserKernel {
 
     	private InvertedPageTable() 
     	{
-    		lock = new Lock();
+    		sema4 = new Semaphore(1);
     		invertedPageTable = new Hashtable<Integer, 
     		Hashtable <Integer, TranslationEntry>>
     		(Machine.processor().getNumPhysPages() - Machine.processor().getTLBSize());
@@ -116,10 +116,7 @@ public class VMKernel extends UserKernel {
     	public int getPhysicalPageNumber(int processId, int virtualPageNumber)
     	{
   //  		Lib.debug(dbgVM, "Looking for processId: " + processId + " VPN: "+virtualPageNumber);
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
     		
     		int returnValue = -1;
 
@@ -134,7 +131,7 @@ public class VMKernel extends UserKernel {
     		
     		
     		returnValue = translationEntry.ppn;
-    		lock.release();
+    		sema4.V();
     		
     		return returnValue;	
     	}
@@ -146,10 +143,7 @@ public class VMKernel extends UserKernel {
     	{
   //  		Lib.debug(dbgVM, "addToInvertedPageTable: PID "+ processId + " VPN "+ virtualPageNumber + " PPN " + physicalPageNumber);
     		
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
     		TranslationEntry translationEntry = 
     			new TranslationEntry(virtualPageNumber, 
     					physicalPageNumber, true,false,false,false);
@@ -170,7 +164,7 @@ public class VMKernel extends UserKernel {
     			innerHashtable.put(virtualPageNumberInt, translationEntry);
     		}
     		
-    		lock.release();
+    		sema4.V();
     		return translationEntry;	
     	}
     	
@@ -184,14 +178,11 @@ public class VMKernel extends UserKernel {
          */
     	public TranslationEntry getTranslationEntry(int processId, int virtualPageNumber)
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
    		
     		TranslationEntry returnValue = 
     			invertedPageTable.get(processId).get(virtualPageNumber);
-    		lock.release();
+    		sema4.V();
     		
     		return returnValue;	
     	}
@@ -202,12 +193,7 @@ public class VMKernel extends UserKernel {
          */
     	public TranslationEntry removeTranslationEntry(int processId, int virtualPageNumber)
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
-    		
-
+    		sema4.P();
     		Integer processIdInteger = new Integer(processId);
     		Integer vpnInteger = new Integer(virtualPageNumber);
     		
@@ -217,7 +203,7 @@ public class VMKernel extends UserKernel {
     		TranslationEntry translationEntry = 
     			innerTable.get(vpnInteger);
     		
-    		lock.release();
+    		sema4.P();
     		
     		return translationEntry;	
     	}
@@ -236,10 +222,7 @@ public class VMKernel extends UserKernel {
          */
     	public void addToInvertedPageTable(int processId, TranslationEntry translationEntry)
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
     		
     		Integer processIdInt = new Integer(processId);
     		int virtualPageNumber = translationEntry.vpn;
@@ -259,7 +242,7 @@ public class VMKernel extends UserKernel {
     			innerHashtable.put(virtualPageNumberInt, translationEntry);
     		}
     		
-    		lock.release();
+    		sema4.V();
     		return;	
     	}
         /**
@@ -268,15 +251,12 @@ public class VMKernel extends UserKernel {
          */
     	public void setDirty(int processId, int virtualPageNumber, boolean value)
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
 
     		TranslationEntry currentValue = 
     			invertedPageTable.get(processId).get(virtualPageNumber);
     		currentValue.dirty = value;
-    		lock.release();
+    		sema4.P();
 
     	}
         /**
@@ -285,16 +265,13 @@ public class VMKernel extends UserKernel {
          */    	
     	public boolean isDirty(int processId, int virtualPageNumber)
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
 
     		TranslationEntry currentValue = 
     			invertedPageTable.get(processId).get(virtualPageNumber);
     		
     		boolean returnValue =  currentValue.dirty;
-    		lock.release();
+    		sema4.V();
     		return returnValue;
 
     	}
@@ -305,15 +282,12 @@ public class VMKernel extends UserKernel {
          */
     	public void setUsed(int processId, int virtualPageNumber, boolean value)
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
 
     		TranslationEntry currentValue = 
     			invertedPageTable.get(processId).get(virtualPageNumber);
     		currentValue.used = value;
-    		lock.release();
+    		sema4.V();
     	}
     	
         /**
@@ -322,15 +296,12 @@ public class VMKernel extends UserKernel {
          */
     	public void setValid(int processId, int virtualPageNumber, boolean value)
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
 
     		TranslationEntry currentValue = 
     			invertedPageTable.get(processId).get(virtualPageNumber);
     		currentValue.valid = value;
-    		lock.release();
+    		sema4.V();
     	}
     	
         /**
@@ -338,13 +309,10 @@ public class VMKernel extends UserKernel {
          */
     	public Enumeration<Integer> getKeys()
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
 
     		Enumeration<Integer> returnValue = invertedPageTable.keys();
-    		lock.release();
+    		sema4.V();
     		return returnValue;
 
     	}
@@ -354,15 +322,12 @@ public class VMKernel extends UserKernel {
          */
     	public Hashtable<Integer, TranslationEntry> getTranslationEntryMappingForProcessId(int processId)
     	{
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		sema4.P();
     		Integer processIdInteger = new Integer(processId);
     		Hashtable<Integer, TranslationEntry> returnValue = 
     			invertedPageTable.get(processIdInteger);
 
-    		lock.release();
+    		sema4.V();
     		return returnValue;
 
     	}
@@ -438,7 +403,7 @@ public class VMKernel extends UserKernel {
     	
     	private Hashtable<Integer, Hashtable<Integer,TranslationEntry>> invertedPageTable;
 
-    	private Lock lock;	
+    	private Semaphore sema4;	
     	
     	public SwappingFile swapF;
     }
