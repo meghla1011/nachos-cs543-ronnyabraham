@@ -42,6 +42,25 @@ public class SwappingFile {
 		return retval;
 	}
 	
+	public void deleteFile()
+	{
+		swappingFile.close();
+		Machine.stubFileSystem().remove(swappingFile.getName());
+	}
+	
+	public void unloadSections(int processId)
+	{
+		// Iterate through the slots, if they aren't from current pid, remove them
+		for (int i = 0; i < keys.size(); i++)
+		{
+			if ( keys.get(i).indexOf(",") != -1 && processId == Integer.valueOf(keys.get(i).substring(0, keys.get(i).indexOf(","))).intValue() )
+			{
+				keys.set(i, "");
+				entries.set(i, null);
+			}
+		}
+	}
+	
 	public void writePage(int pid, int vpn, TranslationEntry entry)
 	{
 		// add a new key and entry to our vectors
