@@ -440,6 +440,6 @@ public class VMKernel extends UserKernel {
 
     	private Lock lock;	
     	
-    	private SwappingFile swapF;
+    	public SwappingFile swapF;
     }
 }
