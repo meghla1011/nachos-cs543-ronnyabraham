@@ -73,6 +73,8 @@ public class VMKernel extends UserKernel {
      * Terminate this kernel. Never returns.
      */
     public void terminate() {
+    	
+    	VMKernel.ipt.swapF.deleteFile();
 	super.terminate();
     }
 
