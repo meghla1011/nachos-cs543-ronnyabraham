@@ -197,29 +197,6 @@ public class VMProcess extends UserProcess {
 		}
 		return true;
     }
-
-    public void lazyLoadPage(int virtualPageNumber)
-    {
-    	// load sections
-    	for (int s=0; s<coff.getNumSections(); s++) 
-    	{
-    		CoffSection section = coff.getSection(s);
-
-    		for (int i=0; i<section.getLength(); i++) 
-    		{
-    			int vpn = section.getFirstVPN()+i;
-
-    			//find the vpn that we should load
-    			if (vpn == virtualPageNumber )
-    			{
-    				int physicalAddress = 
-    					VMKernel.ipt.getPhysicalPageNumber(processId, vpn);
-    				section.loadPage(i, physicalAddress);
-    			}
-    		}
-    	}
-    }
-    
     
     /**
      * Release any resources allocated by <tt>loadSections()</tt>.
@@ -280,17 +257,14 @@ public class VMProcess extends UserProcess {
 			//Add a new page to the inverted page table. 
 			//we will have to get a new page. 
 			int newPpn = VMKernel.getFreePage();
-			iptTranslationEntry = VMKernel.ipt.addToInvertedPageTable(processId,virtualPageNumber,newPpn);
+			iptTranslationEntry = VMKernel.ipt.addToInvertedPageTable(processId, virtualPageNumber, newPpn);
 			writeTranslationEntryToTLB(iptTranslationEntry,processor);
 			return;
 		}
 		
 		// handle page fault
-    	 iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
+    	 iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber, numPages, coff ,vpnToCoff, vpnToOffset);
     	 writeTranslationEntryToTLB(iptTranslationEntry,processor);
-		//lazyLoadPage(iptTranslationEntry.vpn);
-		
-		
     }
     
     public void writeTranslationEntryToTLB(TranslationEntry iptTranslationEntry,Processor processor)
