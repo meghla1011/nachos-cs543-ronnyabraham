@@ -200,7 +200,7 @@ int main(int argc, char *argv[]) {
     //char buffer[BUFFERSIZE];       
 	
   runline("sort &");
-  runline("sort &");
+  //runline("sort &");
 
   //runline("open\tread\tclose &");
   //runline("write&");
