@@ -30,7 +30,7 @@ public class VMKernel extends UserKernel {
      * Initialize this kernel.
      */
     public void initialize(String[] args) {
-	super.initialize(args);
+	     super.initialize(args);
     }
 
     /**
@@ -59,14 +59,7 @@ public class VMKernel extends UserKernel {
      */
     public void run() {
     	super.run();
-//kikyfv
-//    	UserProcess process = UserProcess.newUserProcess();
-//    	
-//    	String shellProgram = Machine.getShellProgramName();	
-//    	System.out.println("shell program name is "+shellProgram);
-//    	Lib.assertTrue(process.execute(shellProgram, new String[] { }));
-//
-//    	KThread.currentThread().finish();
+
     }
     
     /**
@@ -75,7 +68,7 @@ public class VMKernel extends UserKernel {
     public void terminate() {
     	
     	VMKernel.ipt.swapF.deleteFile();
-	super.terminate();
+	    super.terminate();
     }
 
     // dummy variables to make javac smarter
@@ -175,12 +168,12 @@ public class VMKernel extends UserKernel {
          */
     	public TranslationEntry getTranslationEntry(int processId, int virtualPageNumber)
     	{
-    		
-   		
-    		TranslationEntry returnValue = 
-    			invertedPageTable.get(processId).get(virtualPageNumber);
-    		
-    		
+    		TranslationEntry returnValue = null;
+    		Hashtable<Integer, TranslationEntry> processTable =  invertedPageTable.get(processId);
+    		if(processTable != null)
+    		{
+    			returnValue = processTable.get(virtualPageNumber);
+    		}
     		return returnValue;	
     	}
     	
@@ -205,12 +198,21 @@ public class VMKernel extends UserKernel {
     		return translationEntry;	
     	}
     	
-    	public int iptSize(int processId)
-    	{
-    		Hashtable<Integer,TranslationEntry> innerTable = 
-    			invertedPageTable.get(processId);
+    	public int iptSize()
+    	{ 
     		
-    		return innerTable.size();
+    		Enumeration<Integer> set = ipt.getKeys();
+    		int sum=0;
+    		for ( ; set.hasMoreElements() ;) {
+    			Integer key = set.nextElement();
+    			Hashtable<Integer,TranslationEntry> innerTable = invertedPageTable.get(key);
+    			if(innerTable != null)
+    			{
+    				sum+= innerTable.size();
+    			}
+    			
+    	    }    		
+    		return sum;
     	}
     	
     	
@@ -328,7 +330,7 @@ public class VMKernel extends UserKernel {
 
     	}
     	
-    	public TranslationEntry handlePageFault(int pid, int vpn, int numProcessPages, Coff cof, int[] vpn2Coff, int[] vpn2Offset)
+    	public TranslationEntry handlePageFault(int pid, int vpn, int numProcessPages, Coff cof, int[] vpn2Coff, int[] vpn2Offset,int numCoffPages)
     	{    		    	
     		//Find the old page using clock algorithm
     		TranslationEntry toBeSwapped = runClockAlgorithm(pid);
@@ -349,7 +351,7 @@ public class VMKernel extends UserKernel {
 				// being here means this is the physical page was not found in the tlb, inverted table, or swap file
 				// if this is the case, we need to load the relevant section of the coff to the new page 
 				
-				if (vpn >= 0 && vpn < numProcessPages)
+				if (vpn >= 0 && vpn < numCoffPages)
 				{
 					CoffSection sec = cof.getSection(vpn2Coff[vpn]);
 					sec.loadPage(vpn2Offset[vpn], toBeSwapped.ppn);
@@ -378,12 +380,14 @@ public class VMKernel extends UserKernel {
     	{
     		Hashtable<Integer,TranslationEntry> listOfPages = invertedPageTable.get(processId);
     		Enumeration<Integer> set = listOfPages.keys();
-
+    		
     		for ( ; set.hasMoreElements() ;) {
     			Integer key = set.nextElement();
     			TranslationEntry te = listOfPages.get(key);
     			if(te.used == false)
-      	    	  return te;
+    			{
+    				return te;
+    			}
     			else
     			{    				
     			    //second chance algorithm resets the used flag, so next time te will become
@@ -391,8 +395,18 @@ public class VMKernel extends UserKernel {
     				te.used = false;
     			}
     	    }
-    		//should not reach here 
-    	    return null;
+    		// being here means all our te's were used, just return the first one (set used to true)
+    		set = listOfPages.keys();
+    		if(set.hasMoreElements())
+    		{
+    			Integer key = set.nextElement();
+    			TranslationEntry te = listOfPages.get(key);
+    			return te;
+    		}
+    		else
+    		{
+    			return null;
+    		}
     	}
     	
     	

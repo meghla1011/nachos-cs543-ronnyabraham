@@ -38,7 +38,8 @@ public class VMProcess extends UserProcess {
     @Override
 	protected void initializeMemory()
 	{
-   		int numPages = 15;
+   		int numPages = 20;
+   		/*
 		MemoryManager memoryManager = UserKernel.memoryManager; 
 		
 		if (memoryManager == null)
@@ -57,6 +58,7 @@ public class VMProcess extends UserProcess {
 //			Lib.debug(dbgVM, "PID: "+ processId + " VPN: " + i + " PPN: " + ppn);
 			VMKernel.ipt.addToInvertedPageTable(processId, i,ppn);
 		}
+		*/
 	}
 	
     /**
@@ -65,7 +67,7 @@ public class VMProcess extends UserProcess {
     @Override
 	protected void destoryMemory()
 	{
-		super.destoryMemory();
+		//super.destoryMemory();
 	}
 	
     /**
@@ -279,7 +281,7 @@ public class VMProcess extends UserProcess {
 			te.used = true;
 			VMKernel.invertedPageTable.put(pid, te);
 			*/
-			TranslationEntry te = handlePhyToVirtual(pageNum,addrOffset,Machine.processor());
+			TranslationEntry te = handleVirtualToPhys(pageNum,addrOffset,Machine.processor());
 			
 			int phyPageNumber = te.ppn;
 			
@@ -334,7 +336,7 @@ public class VMProcess extends UserProcess {
 			int addrOffset = Processor.offsetFromAddress(vaddr);
 			
 			//TranslationEntry te = VMKernel.invertedPageTable.handlePageFault (pid, pageNum, coff, this.pageNums, this.pageOffsets, this.numOfPages);
-			TranslationEntry te = handlePhyToVirtual(pageNum,addrOffset,Machine.processor());
+			TranslationEntry te = handleVirtualToPhys(pageNum,addrOffset,Machine.processor());
 			te.used = true;
 			te.dirty = true;
 			//VMKernel.invertedPageTable.put(pid, te);
@@ -354,8 +356,9 @@ public class VMProcess extends UserProcess {
 				offset += amount;
 				length -= amount;
 			}
-		}
+		}	
 		return total;
+		
 	}
     
 	TranslationEntry handleTLBMissException()
@@ -366,10 +369,10 @@ public class VMProcess extends UserProcess {
     	int virtualPageNumber = vaddr / pageSize;
     	int realMemOffset = vaddr % pageSize;
     	
-    	return handlePhyToVirtual(virtualPageNumber,realMemOffset,processor);
+    	return handleVirtualToPhys(virtualPageNumber,realMemOffset,processor);
     }
 	
-	TranslationEntry handlePhyToVirtual(int vpn,int offset,Processor processor)
+	TranslationEntry handleVirtualToPhys(int vpn,int offset,Processor processor)
 	{
     	//Search for the TLB in the inverted page table. 
     	
@@ -381,21 +384,39 @@ public class VMProcess extends UserProcess {
 		    return iptTranslationEntry;
 		}
     	//The inverted table does not have tlb entry 
-		int physicalPageSize = Machine.processor().getNumPhysPages();
+		int numPhysPages = Machine.processor().getNumPhysPages();
 		int tlbSize = Machine.processor().getTLBSize();
 		//Inverted page table size is physical page size - tlbsize. 
-		if( VMKernel.ipt.iptSize(processId) < (physicalPageSize - tlbSize) )
+		//System.out.println("physical page size "+ numPhysPages+" tlbsize "+tlbSize);
+		if( VMKernel.ipt.iptSize() < (numPhysPages - tlbSize) )
 		{
 			//Add a new page to the inverted page table. 
 			//we will have to get a new page. 
 			int newPpn = VMKernel.getFreePage();
 			iptTranslationEntry = VMKernel.ipt.addToInvertedPageTable(processId, vpn, newPpn);
+			if (vpn >= 0 && vpn < requiredPagesForCoff)
+			{	
+				try
+				{
+					CoffSection sec = coff.getSection(vpnToCoff[vpn]);
+					if(sec != null)
+					{
+						sec.loadPage(vpnToOffset[vpn], newPpn);
+						iptTranslationEntry.readOnly = sec.isReadOnly();
+					}
+				}
+				catch(Exception ex)
+				{
+					System.out.println("Failed to load coff section "+ ex.toString()+ " " +vpn);
+					ex.printStackTrace();
+				}
+			} 
 			writeTranslationEntryToTLB(iptTranslationEntry,processor);
 			return iptTranslationEntry;
 		}
 		
 		// handle page fault
-    	 iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,vpn, numPages, coff ,vpnToCoff, vpnToOffset);
+    	 iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,vpn, numPages, coff ,vpnToCoff, vpnToOffset,requiredPagesForCoff);
     	 writeTranslationEntryToTLB(iptTranslationEntry,processor);
     	 return iptTranslationEntry;
     }
