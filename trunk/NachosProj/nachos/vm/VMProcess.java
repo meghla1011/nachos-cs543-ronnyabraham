@@ -169,31 +169,33 @@ public class VMProcess extends UserProcess {
      *
      * @return	<tt>true</tt> if successful.
      */
-    protected boolean loadSections() {
- 	if (numPages > Machine.processor().getNumPhysPages() ) {
-	    coff.close();
-	    Lib.debug(dbgProcess, "\tinsufficient physical memory");
-	    return false;
-	}
+    protected boolean loadSections()
+    {
+    	// calculate how many pages we will need for our coff section
+    	int numSections = coff.getNumSections();
+		for(int i = 0; i < numSections; ++i)
+		{
+			CoffSection sec = coff.getSection(i);
+			int secLength = sec.getLength();
+			requiredPagesForCoff += secLength;
+		}
+		// create our vpn to coff and offset arrays
+		vpnToCoff = new int[requiredPagesForCoff];
+		vpnToOffset = new int[requiredPagesForCoff];
 
-	// load sections
-//	for (int s=0; s<coff.getNumSections(); s++) {
-//	    CoffSection section = coff.getSection(s);
-//	    
-//	    Lib.debug(dbgProcess, "\tinitializing " + section.getName()
-//		      + " section (" + section.getLength() + " pages)");
-//
-//	    for (int i=0; i<section.getLength(); i++) {
-//		int vpn = section.getFirstVPN()+i;
-//
-//		int physicalAddress = VMKernel.ipt.getPhysicalPageNumber(processId, vpn);
-//		
-//		// map virtual addresses to physical addresses
-//		section.loadPage(i, physicalAddress);
-//	    }
-//	}
-	
-	return true;
+		for(int j = 0; j < numSections; j++) 
+		{
+			CoffSection sec = coff.getSection(j);
+			int vpn = sec.getFirstVPN();
+			int secLength = sec.getLength();
+			for(int k = 0; k < secLength; ++k)
+			{
+				vpn = sec.getFirstVPN() + k;
+				vpnToCoff[vpn]		= j;
+				vpnToOffset[vpn]	= k;
+			}
+		}
+		return true;
     }
 
     public void lazyLoadPage(int virtualPageNumber)
@@ -318,8 +320,12 @@ public class VMProcess extends UserProcess {
     		frameNumber = tempFrameNumber;
     	}
     	return frameNumber;	
-    }
-
+    } 
+    public int requiredPagesForCoff;
+    // we maintain 2 arrays keeping track of the mapping from vurtual pages to coff sections and offsets
+    public int [] vpnToCoff;
+    public int [] vpnToOffset;
+    
     private int tempFrameNumber;
     private int tlbIndexCounter;
     private boolean tlbInitialized;
@@ -327,4 +333,5 @@ public class VMProcess extends UserProcess {
     private int[] tlbImage;
     private static final char dbgProcess = 'a';
     private static final char dbgVM = 'v';
+    
 }
