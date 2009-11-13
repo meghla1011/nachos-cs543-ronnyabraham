@@ -244,7 +244,121 @@ public class VMProcess extends UserProcess {
     	}
     }
     
-    void handleTLBMissException()
+    /**
+	 * Transfer data from this process's virtual memory to the specified array.
+	 * This method handles address translation details. This method must
+	 * <i>not</i> destroy the current process if an error occurs, but instead
+	 * should return the number of bytes successfully copied (or zero if no
+	 * data could be copied).
+	 *
+	 * @param	vaddr	the first byte of virtual memory to read.
+	 * @param	data	the array where the data will be stored.
+	 * @param	offset	the first byte to write in the array.
+	 * @param	length	the number of bytes to transfer from virtual memory to
+	 *			the array.
+	 * @return	the number of bytes successfully transferred.
+	 */
+	public int readVirtualMemory(int vaddr, byte[] data, int offset, int length) 
+	{
+		Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
+
+		byte[] memory = Machine.processor().getMemory();
+		
+		
+		
+		// Get the physical memory from the page table
+		int total = 0;
+		
+		while( length != 0 )
+		{
+			int pageNum = Processor.pageFromAddress(vaddr);
+			int addrOffset = Processor.offsetFromAddress(vaddr);
+			
+			/*
+			TranslationEntry te = VMKernel.ipt.handlePageFault (processId, pageNum, coff, this.pageNums, this.pageOffsets, this.numOfPages);
+			te.used = true;
+			VMKernel.invertedPageTable.put(pid, te);
+			*/
+			TranslationEntry te = handlePhyToVirtual(pageNum,addrOffset,Machine.processor());
+			
+			int phyPageNumber = te.ppn;
+			
+			int phyAddr = Processor.makeAddress(phyPageNumber, addrOffset);
+
+			if (phyAddr != -1)
+			{
+				int amount = Math.min(length, memory.length - phyAddr);
+				//int amount = length;
+				
+				System.arraycopy(memory, phyAddr, data, offset, amount);				
+				vaddr += amount;
+				total += amount;
+				offset += amount;
+				length -= amount;
+			}
+		}
+
+		return total;
+	}
+	
+	/**
+	 * Transfer data from the specified array to this process's virtual memory.
+	 * This method handles address translation details. This method must
+	 * <i>not</i> destroy the current process if an error occurs, but instead
+	 * should return the number of bytes successfully copied (or zero if no
+	 * data could be copied).
+	 *
+	 * @param	vaddr	the first byte of virtual memory to write.
+	 * @param	data	the array containing the data to transfer.
+	 * @param	offset	the first byte to transfer from the array.
+	 * @param	length	the number of bytes to transfer from the array to
+	 *			virtual memory.
+	 * @return	the number of bytes successfully transferred.
+	 */
+	public int writeVirtualMemory(int vaddr, byte[] data, int offset, int length) 
+	{
+		Lib.assertTrue(offset >= 0 && length >= 0 && offset+length <= data.length);
+
+		byte[] memory = Machine.processor().getMemory();
+		
+		// First check to see if vaddr is within range
+		// if ( vaddr < 0 || vaddr >= memory.length || length <= 0 )
+		//	return 0;
+		
+		// Get the physical memory from the page table
+		int total = 0;
+		
+		while(length != 0)
+		{
+			int pageNum = Processor.pageFromAddress(vaddr);
+			int addrOffset = Processor.offsetFromAddress(vaddr);
+			
+			//TranslationEntry te = VMKernel.invertedPageTable.handlePageFault (pid, pageNum, coff, this.pageNums, this.pageOffsets, this.numOfPages);
+			TranslationEntry te = handlePhyToVirtual(pageNum,addrOffset,Machine.processor());
+			te.used = true;
+			te.dirty = true;
+			//VMKernel.invertedPageTable.put(pid, te);
+			
+			int phyPageNumber = te.ppn;
+			
+			int phyAddr = Processor.makeAddress(phyPageNumber, addrOffset);
+
+			if (phyAddr != -1)
+			{
+				int amount = Math.min(length, memory.length - phyAddr);
+				//int amount = length;
+				
+				System.arraycopy(data, offset, memory, phyAddr, amount);
+				vaddr += amount;
+				total += amount;
+				offset += amount;
+				length -= amount;
+			}
+		}
+		return total;
+	}
+    
+	TranslationEntry handleTLBMissException()
     {
     	Processor processor = Machine.processor();
     	int vaddr = processor.readRegister(Machine.processor().regBadVAddr);
@@ -252,14 +366,19 @@ public class VMProcess extends UserProcess {
     	int virtualPageNumber = vaddr / pageSize;
     	int realMemOffset = vaddr % pageSize;
     	
+    	return handlePhyToVirtual(virtualPageNumber,realMemOffset,processor);
+    }
+	
+	TranslationEntry handlePhyToVirtual(int vpn,int offset,Processor processor)
+	{
     	//Search for the TLB in the inverted page table. 
     	
-    	TranslationEntry iptTranslationEntry = VMKernel.ipt.getTranslationEntry(processId, virtualPageNumber);
+    	TranslationEntry iptTranslationEntry = VMKernel.ipt.getTranslationEntry(processId, vpn);
 		if(iptTranslationEntry != null)
 		{
 			//write the translation entry to the TLB buffer
 		    writeTranslationEntryToTLB(iptTranslationEntry,processor);
-		    return;
+		    return iptTranslationEntry;
 		}
     	//The inverted table does not have tlb entry 
 		int physicalPageSize = Machine.processor().getNumPhysPages();
@@ -270,14 +389,15 @@ public class VMProcess extends UserProcess {
 			//Add a new page to the inverted page table. 
 			//we will have to get a new page. 
 			int newPpn = VMKernel.getFreePage();
-			iptTranslationEntry = VMKernel.ipt.addToInvertedPageTable(processId, virtualPageNumber, newPpn);
+			iptTranslationEntry = VMKernel.ipt.addToInvertedPageTable(processId, vpn, newPpn);
 			writeTranslationEntryToTLB(iptTranslationEntry,processor);
-			return;
+			return iptTranslationEntry;
 		}
 		
 		// handle page fault
-    	 iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber, numPages, coff ,vpnToCoff, vpnToOffset);
+    	 iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,vpn, numPages, coff ,vpnToCoff, vpnToOffset);
     	 writeTranslationEntryToTLB(iptTranslationEntry,processor);
+    	 return iptTranslationEntry;
     }
     
     public void writeTranslationEntryToTLB(TranslationEntry iptTranslationEntry,Processor processor)
