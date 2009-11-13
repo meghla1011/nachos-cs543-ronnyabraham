@@ -262,9 +262,33 @@ public class VMProcess extends UserProcess {
     	int virtualPageNumber = vaddr / pageSize;
     	int realMemOffset = vaddr % pageSize;
     	
-    	// handle page fault
+    	//Search for the TLB in the inverted page table. 
+    	
+    	TranslationEntry iptTranslationEntry = VMKernel.ipt.getTranslationEntry(processId, virtualPageNumber);
+		if(iptTranslationEntry != null)
+		{
+			//write the translation entry to the TLB buffer
+		    writeTranslationEntryToTLB(iptTranslationEntry,processor);
+		}
+    	//The inverted table does not have tlb entry 
+		int physicalPageSize = Machine.processor().getNumPhysPages();
+		int tlbSize = processor.getTLBSize();
+		//Inverted page table size is physical page size - tlbsize. 
+		if( VMKernel.ipt.iptSize(processId) < (physicalPageSize - tlbSize) )
+		{
+			//Add a new page to the inverted page table. 
+			
+		}
+		
+		// handle page fault
     	TranslationEntry iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
 		lazyLoadPage(iptTranslationEntry.vpn);
+		
+		
+    }
+    
+    public void writeTranslationEntryToTLB(TranslationEntry iptTranslationEntry,Processor processor)
+    {
     	if (!tlbInitialized)
     	{
     		processor.writeTLBEntry(tlbIndexCounter, iptTranslationEntry);
@@ -286,7 +310,6 @@ public class VMProcess extends UserProcess {
     	}
 		tlbIndexCounter++;
 		tlbIndexCounter = tlbIndexCounter % processor.getTLBSize();
-		
 		tempFrameNumber = iptTranslationEntry.ppn;
     }
     

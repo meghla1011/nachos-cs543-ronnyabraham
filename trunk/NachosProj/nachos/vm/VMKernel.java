@@ -215,6 +215,14 @@ public class VMKernel extends UserKernel {
     		return translationEntry;	
     	}
     	
+    	public int iptSize(int processId)
+    	{
+    		Hashtable<Integer,TranslationEntry> innerTable = 
+    			invertedPageTable.get(processId);
+    		
+    		return innerTable.size();
+    	}
+    	
     	
         /**
          * Adds an entry to the TLB 
@@ -355,15 +363,13 @@ public class VMKernel extends UserKernel {
     	public TranslationEntry handlePageFault(int processId, int virtualPageNum)
     	{
     		
-    		TranslationEntry iptTranslationEntry = getTranslationEntry(processId, virtualPageNum);
-    		if(iptTranslationEntry != null)
-    			return iptTranslationEntry;
+    		
     	
     		//now we will have to handle the condition of page fault
-    		if (! lock.isHeldByCurrentThread())
-    		{
-    			lock.acquire();
-    		}
+    		//if (! lock.isHeldByCurrentThread())
+    		//{
+    		//	lock.acquire();
+    		//}
     		
     		//Find the oldpage using clock algorithm
     		TranslationEntry toBeSwapped = runClockAlgorithm(processId);
