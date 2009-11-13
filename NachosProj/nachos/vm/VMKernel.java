@@ -140,7 +140,7 @@ public class VMKernel extends UserKernel {
         /**
          * Adds an entry to the TLB 
          */
-    	public void addToInvertedPageTable(int processId, int virtualPageNumber, int physicalPageNumber)
+    	public TranslationEntry addToInvertedPageTable(int processId, int virtualPageNumber, int physicalPageNumber)
     	{
   //  		Lib.debug(dbgVM, "addToInvertedPageTable: PID "+ processId + " VPN "+ virtualPageNumber + " PPN " + physicalPageNumber);
     		
@@ -169,7 +169,7 @@ public class VMKernel extends UserKernel {
     		}
     		
     		lock.release();
-    		return;	
+    		return translationEntry;	
     	}
     	
         /**
@@ -364,35 +364,9 @@ public class VMKernel extends UserKernel {
     	{
     		
     		
-    	
-    		//now we will have to handle the condition of page fault
-    		//if (! lock.isHeldByCurrentThread())
-    		//{
-    		//	lock.acquire();
-    		//}
-    		
     		//Find the oldpage using clock algorithm
     		TranslationEntry toBeSwapped = runClockAlgorithm(processId);
     		
-    		boolean oldStatus = Machine.interrupt().setStatus(false);
-    		
-    		TranslationEntry newTLB = new TranslationEntry();
-		    newTLB.valid = false;
-		    //remove toBeSwapped tlb from processor TLB list
-			for (int i = 0; i < Machine.processor().getTLBSize(); i++)
-			{
-				TranslationEntry temp2 = Machine.processor().readTLBEntry(i);
-				if (temp2.vpn == toBeSwapped.vpn)
-				{
-					if (temp2.dirty)
-					{	
-						addToInvertedPageTable(processId,temp2);
-					}
-                    //This will clear the victim tlb
-					Machine.processor().writeTLBEntry(i, newTLB);
-				}
-			}
-			Machine.interrupt().setStatus(oldStatus);
     		if(toBeSwapped != null)
     		{
     			swapF.writePage(processId, toBeSwapped.vpn, toBeSwapped);
@@ -407,11 +381,9 @@ public class VMKernel extends UserKernel {
 			// It wasn't in swap file, then we create it
 			if ( newTE == null )
 			{
-				addToInvertedPageTable(processId,virtualPageNum,toBeSwapped.ppn);
+				newTE = addToInvertedPageTable(processId,virtualPageNum,toBeSwapped.ppn);
 			}
-			iptTranslationEntry = getTranslationEntry(processId, virtualPageNum);
-    		
-    		return iptTranslationEntry;
+			return newTE;
     	}
     	
     	//In the clock algorithm we use the used bit as the reference bit

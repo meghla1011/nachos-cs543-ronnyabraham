@@ -277,12 +277,16 @@ public class VMProcess extends UserProcess {
 		if( VMKernel.ipt.iptSize(processId) < (physicalPageSize - tlbSize) )
 		{
 			//Add a new page to the inverted page table. 
-			
+			//we will have to get a new page. 
+			int newPpn = VMKernel.getFreePage();
+			iptTranslationEntry = VMKernel.ipt.addToInvertedPageTable(processId,virtualPageNumber,newPpn);
+			writeTranslationEntryToTLB(iptTranslationEntry,processor);
 		}
 		
 		// handle page fault
-    	TranslationEntry iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
-		lazyLoadPage(iptTranslationEntry.vpn);
+    	iptTranslationEntry = VMKernel.ipt.handlePageFault(processId,virtualPageNumber);
+    	
+		//lazyLoadPage(iptTranslationEntry.vpn);
 		
 		
     }
