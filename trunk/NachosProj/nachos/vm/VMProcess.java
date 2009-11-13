@@ -201,8 +201,20 @@ public class VMProcess extends UserProcess {
     /**
      * Release any resources allocated by <tt>loadSections()</tt>.
      */
-    protected void unloadSections() {
-
+    protected void unloadSections()
+    {
+    	// invalidate the entries in the tlb
+		boolean stt = Machine.interrupt().disable();
+		for (int i = 0; i < Machine.processor().getTLBSize(); ++i) 
+		{	
+			TranslationEntry entry = new TranslationEntry();
+			entry.valid = false;
+			Machine.processor().writeTLBEntry(i, entry);
+		}
+		Machine.interrupt().restore(stt);
+		// remove the translation entries for this process in the inverted page table
+		VMKernel.ipt.cleanupProcessEntries(processId);
+		// cleanup the swap file from the entries fo this process
     }    
 
     /**
