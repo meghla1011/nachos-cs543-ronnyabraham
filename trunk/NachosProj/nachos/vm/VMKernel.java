@@ -360,41 +360,45 @@ public class VMKernel extends UserKernel {
 
     	}
     	
-    	public TranslationEntry handlePageFault(int processId, int virtualPageNum/*,int numPages,Coff coff*/)
+    	public TranslationEntry handlePageFault(int pid, int vpn, int numProcessPages, Coff cof, int[] vpn2Coff, int[] vpn2Offset)
     	{    		    	
-    		//Find the oldpage using clock algorithm
-    		TranslationEntry toBeSwapped = runClockAlgorithm(processId);
+    		//Find the old page using clock algorithm
+    		TranslationEntry toBeSwapped = runClockAlgorithm(pid);
     		
     		if(toBeSwapped != null)
     		{
-    			swapF.writePage(processId, toBeSwapped.vpn, toBeSwapped);
-				
+    			swapF.writePage(pid, toBeSwapped.vpn, toBeSwapped);
 				// Take old page and remove it from page table
-    			removeTranslationEntry(processId, toBeSwapped.vpn);
+    			removeTranslationEntry(pid, toBeSwapped.vpn);
     		}
     		
-    		
-    		TranslationEntry newTE = swapF.readPage(processId, virtualPageNum, toBeSwapped.ppn);
+    		TranslationEntry newTE = swapF.readPage(pid, vpn, toBeSwapped.ppn);
 
 			// It wasn't in swap file, then we create it
 			if ( newTE == null )
 			{
-				newTE = addToInvertedPageTable(processId,virtualPageNum,toBeSwapped.ppn);
-				/*
-				if ( virtualPageNum >= 0 && vpn < numPages ) 
+				newTE = addToInvertedPageTable(pid,vpn,toBeSwapped.ppn);
+				// being here means this is the physical page was not found in the tlb, inverted table, or swap file
+				// if this is the case, we need to load the relevant section of the coff to the new page 
+				
+				if (vpn >= 0 && vpn < numProcessPages)
 				{
-					CoffSection cs = coff.getSection(pageNum[vpn]);
-					cs.loadPage(pageOffset[vpn], ppn);
-					newTE.readOnly = cs.isReadOnly();
+					CoffSection sec = cof.getSection(vpn2Coff[vpn]);
+					sec.loadPage(vpn2Offset[vpn], toBeSwapped.ppn);
+					newTE.readOnly = sec.isReadOnly();
 				} 
 				else
 				{
-					// Erase it
-					byte[] data = Machine.processor().getMemory();
-					for ( int i = Processor.makeAddress(ppn, 0); i < (Processor.makeAddress(ppn, 0) + Processor.pageSize); i++ )
-						data[i] = 0;
+					// clear all the memory
+					byte[] allMem = Machine.processor().getMemory();
+					for(int i = Processor.makeAddress(toBeSwapped.ppn, 0); 
+						i < (Processor.makeAddress(toBeSwapped.ppn, 0) + Processor.pageSize);
+						++i)
+					{
+						allMem[i] = 0;
+					}
 				}
-				*/
+				
 			}
 			return newTE;
     	}
