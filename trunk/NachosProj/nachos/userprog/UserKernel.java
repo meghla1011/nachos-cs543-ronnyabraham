@@ -47,6 +47,13 @@ public class UserKernel extends ThreadedKernel {
 		System.out.println("In UserKernel, initializeGlobalMemory.");
     }
     
+    public static int getFreePage()
+    {
+    	LinkedList<Page> page = memoryManager.getPages(1);
+    	Page firstPage = page.get(0);
+    	return firstPage.value;
+    }
+    
     /**
      * Test the console device.
      */	
