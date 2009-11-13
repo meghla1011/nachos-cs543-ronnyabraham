@@ -107,7 +107,7 @@ public class VMKernel extends UserKernel {
     		lock = new Lock();
     		invertedPageTable = new Hashtable<Integer, 
     		Hashtable <Integer, TranslationEntry>>
-    		(Machine.processor().getNumPhysPages());
+    		(Machine.processor().getNumPhysPages() - Machine.processor().getTLBSize());
     		swapF = new SwappingFile();
     	}
         /**
