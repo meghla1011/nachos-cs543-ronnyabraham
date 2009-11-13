@@ -161,6 +161,7 @@ public class VMKernel extends UserKernel {
     	public void cleanupProcessEntries(int pid)
     	{
     		invertedPageTable.remove(pid);
+    		return;
     	}
     	
         /**
