@@ -49,9 +49,19 @@ public class UserKernel extends ThreadedKernel {
     
     public static int getFreePage()
     {
-    	LinkedList<Page> page = memoryManager.getPages(1);
-    	Page firstPage = page.get(0);
+    	Page firstPage=null;
+    	try{
+	    	LinkedList<Page> page = memoryManager.getPages(1);
+	    	firstPage = page.get(0);
+    	}
+    	catch(Exception ex)
+    	{
+    		System.out.println("Failed to get a free physical memmory ");
+    		
+    	}
+    	
     	return firstPage.value;
+    	
     }
     
     /**
