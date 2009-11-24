@@ -632,7 +632,7 @@ public class UserProcess {
      * int  read(int fd, char *buffer, int size);
      * where the arguments are fetched from registers a0, a1, and a2 respectively
      */
-    private int handleRead(int a0,int a1, int a2 )
+    protected int handleRead(int a0,int a1, int a2 )
     {
     	Lib.debug(dbgProcess, "handleRead trying to read file descriptor " + a0);
     	
@@ -673,7 +673,7 @@ public class UserProcess {
      * Handle the write() system call. 
      * int  write(int fd, char *buffer, int size);
      */
-    private int handleWrite(int a0,int a1, int a2)
+    protected int handleWrite(int a0,int a1, int a2)
     {
     	Lib.debug(dbgProcess, "handleWrite trying to write " + a2 + " bytes to file descriptor " + a0);
     	
@@ -824,7 +824,7 @@ public class UserProcess {
     	return 0;
     }
     
-    private static final int
+    protected static final int
     syscallHalt = 0,
 	syscallExit = 1,
 	syscallExec = 2,

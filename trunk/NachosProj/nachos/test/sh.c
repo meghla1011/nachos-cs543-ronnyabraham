@@ -199,11 +199,13 @@ int main(int argc, char *argv[]) {
 	//readline(buffer, BUFFERSIZE);
     //char buffer[BUFFERSIZE];       
 	
-  runline("sort &");
+
+
+  //runline("sort &");
   //runline("sort &");
 
-  //runline("open\tread\tclose &");
-  //runline("write&");
+  runline("connect &");
+  runline("accept &");
 	
     //}
 }
