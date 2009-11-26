@@ -23,8 +23,10 @@ public class NetKernel extends UserKernel {
     public void initialize(String[] args) {
 	super.initialize(args);
 
-	postOffice = new PostOffice();
+	postOffice = new CustomPostOffice();
     }
+    
+    
 
     /**
      * Test the network. Create a server thread that listens for pings on port
@@ -35,6 +37,7 @@ public class NetKernel extends UserKernel {
     public void selfTest() {
 	super.selfTest();
 
+	/*
 	KThread serverThread = new KThread(new Runnable() {
 		public void run() { pingServer(); }
 	    });
@@ -80,8 +83,10 @@ public class NetKernel extends UserKernel {
 	long endTime = Machine.timer().getTime();
 
 	System.out.println("time=" + (endTime-startTime) + " ticks");	
+	*/
     }
 
+    /*
     private void pingServer() {
 	while (true) {
 	    MailMessage ping = postOffice.receive(1);
@@ -99,8 +104,10 @@ public class NetKernel extends UserKernel {
 	    }
 
 	    postOffice.send(ack);
-	}	
+	}
+		
     }
+    */
     
     /**
      * Start running user programs.
@@ -116,7 +123,7 @@ public class NetKernel extends UserKernel {
 	super.terminate();
     }
 
-    private PostOffice postOffice;
+    public static CustomPostOffice postOffice;
 
     // dummy variables to make javac smarter
     private static NetProcess dummy1 = null;
