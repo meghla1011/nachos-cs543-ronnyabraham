@@ -23,22 +23,52 @@ public class NetProcess extends UserProcess {
     	
     }
 
-    private int handleConnect()
+    private int handleConnect(int id, int portNum)
     {
     	Lib.debug(dbgProcess, "Still need to implement handleConnect");
     	
-    	//TODO:  will need to return a file descriptor for this connection
+    	int descriptorAvail = getFirstAvailableFd();
     	
-    	return 0;
+    	if(descriptorAvail != -1 )
+    	{
+    		OpenFile newConn = NetKernel.postOffice.handleConnect ( id, portNum );
+
+			if ( newConn == null )
+			{
+				System.err.println("Failed to get available file descriptor");
+				return -1;
+			}
+				
+
+			// Put it in the file array, give it a file descriptor (from User Process)
+			fileDescriptors[descriptorAvail] = newConn;
+			
+    	}
+    	return descriptorAvail;
     }
     
-    private int handleAccept()
+    private int handleAccept(int port)
     {
-    	Lib.debug(dbgProcess, "Still need to implement handleAccept");
-    	
-    	//TODO:  will need to return a file descriptor for this connection
-    	
-    	return 0;   	
+    	// Get available descriptor number
+    	int descriptorAvail = getFirstAvailableFd();
+		
+		if ( descriptorAvail != -1 )
+		{
+			// Open a file for connection
+			OpenFile acceptConn = NetKernel.postOffice.handleAccept ( port );
+
+			if ( acceptConn == null )
+			{
+				System.err.println("Failed to get available file descriptor");
+				return -1;
+			}
+			
+			// Put it in the file array, give it a file descriptor (from User Process)
+			fileDescriptors[descriptorAvail] = acceptConn;
+			
+		}
+		
+		return descriptorAvail;   	
     }
     
     /**
@@ -138,9 +168,9 @@ public class NetProcess extends UserProcess {
     public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
 	switch (syscall) {
 	case syscallConnect:
-	    return handleConnect();
+	    return handleConnect(a0,a1);
 	case syscallAccept:
-	    return handleAccept();
+	    return handleAccept(a0);
 	case syscallRead:
 	    return handleRead(a0,a1,a2);
 	case syscallWrite:
