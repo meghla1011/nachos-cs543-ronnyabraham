@@ -23,7 +23,7 @@ public class NetKernel extends UserKernel {
     public void initialize(String[] args) {
 	super.initialize(args);
 
-	postOffice = new CustomPostOffice();
+	postOffice = new MessageRouter();
     }
     
     
@@ -123,7 +123,7 @@ public class NetKernel extends UserKernel {
 	super.terminate();
     }
 
-    public static CustomPostOffice postOffice;
+    public static MessageRouter postOffice;
 
     // dummy variables to make javac smarter
     private static NetProcess dummy1 = null;
