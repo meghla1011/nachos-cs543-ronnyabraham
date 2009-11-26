@@ -23,7 +23,7 @@ public class MessageRouter {
 		{
 			portAvail = (new Random()).nextInt( maxPorts); 
 		
-			if (! activeSockets.contains ( currentLink + "." + portAvail + "." + id + "." + port ) )
+			if (! activeChannels.contains ( currentLink + "." + portAvail + "." + id + "." + port ) )
 				break;
 			
 			if ( i == maxPorts - 1 )
@@ -35,11 +35,18 @@ public class MessageRouter {
 		
 		if( portAvail == -1)
 		{
-			return -1;
+			return null;
 		}
 		
 		Channel soc = new Channel(currentLink,portAvail,id,port);
 		
+		activeChannels.add(currentLink + "." + portAvail + "." + id + "." + port); 
+		channelList.add(soc);
+		
+		if ( soc.handleConnect() != -1 )
+		{
+			
+		}
 			
      }
 	
@@ -49,5 +56,6 @@ public class MessageRouter {
 		return new OpenFile();
 	}
 	private int currentLink;
-	private Vector<String> activeSockets = new Vector<String> ();
+	private Vector<String> activeChannels = new Vector<String> ();
+	private Vector<Channel> channelList = new Vector<Channel> ();
 }
