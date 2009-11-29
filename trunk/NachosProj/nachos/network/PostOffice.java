@@ -1,5 +1,8 @@
 package nachos.network;
 
+import java.util.Random;
+import java.util.Vector;
+
 import nachos.machine.*;
 import nachos.threads.*;
 
@@ -22,6 +25,7 @@ public class PostOffice {
      * "postal worker" thread.
      */
     public PostOffice() {
+    linkAddress = Machine.networkLink().getLinkAddress();
 	messageReceived = new Semaphore(0);
 	messageSent = new Semaphore(0);
 	sendLock = new Lock();
@@ -125,10 +129,56 @@ public class PostOffice {
 	messageSent.V();
     }
 
+    
+    public OpenFile handleConnect(int id, int port) throws MalformedPacketException
+	{	
+		int newPort =-1;
+		boolean status = true;
+		int i=0;
+		while(i < maxPorts + 30)
+		{
+			newPort = (new Random()).nextInt(maxPorts); 
+			if (! activeChannels.contains (linkAddress + ":" + newPort + ":" + id + ":" + port) )
+				break;
+			
+			if (i == maxPorts - 1)
+			{
+				status = false;
+				break;
+			}
+			++i;
+		}
+		
+		if(status == false)
+		{
+			return null;
+		}
+		
+		Channel ch = new Channel(linkAddress, newPort, id, port);
+		
+		activeChannels.add(linkAddress + ":" + newPort + ":" + id + ":" + port); 
+		channelList.add(ch);
+		
+		OpenFile retval = ch.connectToSrv();
+		if(retval == null)
+		{
+			activeChannels.remove(linkAddress + ":" + newPort + ":" + id + ":" + port);
+			channelList.remove(ch);
+		}
+		return retval;
+     }
+    
+    
+    
+    
     private SynchList[] queues;
     private Semaphore messageReceived;	// V'd when a message can be dequeued
     private Semaphore messageSent;	// V'd when a message can be queued
     private Lock sendLock;
+    public final static int maxPorts = 128;
+    private int linkAddress;
+    private Vector<String> activeChannels = new Vector<String> ();
+	private Vector<Channel> channelList = new Vector<Channel> ();
 
     private static final char dbgNet = 'n';
 }

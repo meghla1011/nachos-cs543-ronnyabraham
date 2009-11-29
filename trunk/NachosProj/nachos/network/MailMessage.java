@@ -81,6 +81,7 @@ public class MailMessage {
     /** The contents of this message, excluding the mail message header. */
     public byte[] contents;
 
+
     /**
      * The number of bytes in a mail header. The header is formatted as
      * follows:
@@ -102,4 +103,7 @@ public class MailMessage {
      * <tt>portLimit - 1</tt>.
      */    
     public static final int portLimit = 128;
+    
+    public static byte SYN = 0x01;
+    public static byte ACK = 0x02;
 }

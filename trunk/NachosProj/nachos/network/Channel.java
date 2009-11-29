@@ -2,67 +2,57 @@ package nachos.network;
 
 import java.util.Vector;
 
+import nachos.machine.MalformedPacketException;
+import nachos.machine.OpenFile;
+
 /*
  * class channel
  */
 
-public class Channel {
+public class Channel extends OpenFile
+{
 
-	 private int sourceId;
-	 private int sourcePort;
-	 private int destId;
-	 private int destPort;
 	 
-	 public Channel(int srcId,int srcport,int dstId,int dstport )
+	 
+	 public Channel(int srcId, int srcPort, int destId, int destPort)
 	 {
-	     sourceId = srcId;
-	     sourcePort = srcport;
-	     destId = dstId;
-	     destPort = dstport;
+	     this.srcId = srcId;
+	     this.srcPort = srcPort;
+	     this.destId = destId;
+	     this.destPort = destPort;
+	     stt = ConnectionState.CLOSED;
 	 }
 	 
-	 public int handleConnect()
+	 public OpenFile connectToSrv() throws MalformedPacketException
 	 {
-		 if( currState != State.CLOSED)
+		 if(stt != ConnectionState.CLOSED)
 		 {
-			 return -1;
+			 return null;
 		 }
 		 
-		 currState = State.SYN_SENT;
-		 sendMessage(true,false,false,false);
-		 
-		 
-		 
-	 }
-	 
-	 public void sendMessage(boolean sync,boolean ack, boolean fin, boolean stp)
-	 {
-		 int message = 0;
-		 if( sync)
+		 byte[] content = new byte[1];
+		 content[0] = MailMessage.SYN;
+		 MailMessage msg = new MailMessage (destId, destPort, srcId, srcPort, content);
+		 NetKernel.postOffice.send(msg);
+		 stt = ConnectionState.SYN_SENT;
+		 // at this point wait for the server to send a syn ack
+		 MailMessage rspMsg = NetKernel.postOffice.receive(srcPort);
+		 byte rspFlag = rspMsg.contents[0];
+		 if(rspFlag ==  MailMessage.ACK)
 		 {
-			 message += 1000;
+			 return this;
 		 }
-		 if ( ack)
+		 else
 		 {
-			 message += 100;
-		 }
-		 if( stp) 
-		 {
-			 message += 10; 
-		 }
-		 if( fin)
-		 {
-			 message += 1;
-		 }
-		 
-		 if( pendingMessages.contains(message))
-		 {
-			 return 0;
+			 return null;
 		 }
 	 }
 	 
-	 State currState = State.CLOSED;
-	 private Vector<Integer> pendingMessages = new Vector<Integer>();
-	 public static enum Event {CONNECT, ACCEPT, RCVD, SEND, CLOSE, TIMER, SYN, SYNACK, DATA, ACK, STP, FIN, FINACK}
-	 public static enum State {CLOSED, SYN_SENT, SYN_RCVD, ESTABLISHED, STP_SENT, STP_RCVD, CLOSING}
+	 private int srcId, srcPort, destId, destPort;
+	 
+	 ConnectionState stt;
+	 public static enum ConnectionState {SYN_SENT, SYN_RCVD, ESTABLISHED, STP_RCVD, STP_SENT, CLOSING, CLOSED}
+	 
+	 
+	 
 }
