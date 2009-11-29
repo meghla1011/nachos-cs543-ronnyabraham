@@ -24,22 +24,26 @@ public class NetProcess extends UserProcess {
     }
 
     private int handleConnect(int id, int portNum)
-    {
-    	Lib.debug(dbgProcess, "Still need to implement handleConnect");
-    	
+    {	
     	int descriptorAvail = getFirstAvailableFd();
     	
     	if(descriptorAvail != -1 )
     	{
-    		OpenFile newConn = NetKernel.postOffice.handleConnect ( id, portNum );
+    		OpenFile newConn = null;
+			try
+			{
+				newConn = NetKernel.postOffice.handleConnect(id, portNum);
+			} 
+			catch (MalformedPacketException e) 
+			{
+				e.printStackTrace();
+			}
 
-			if ( newConn == null )
+			if(newConn == null)
 			{
 				System.err.println("Failed to get available file descriptor");
 				return -1;
 			}
-				
-
 			// Put it in the file array, give it a file descriptor (from User Process)
 			fileDescriptors[descriptorAvail] = newConn;
 			
@@ -55,17 +59,22 @@ public class NetProcess extends UserProcess {
 		if ( descriptorAvail != -1 )
 		{
 			// Open a file for connection
-			OpenFile acceptConn = NetKernel.postOffice.handleAccept(port);
-			if ( acceptConn == null )
+			OpenFile acceptConn = null;
+			try
+			{
+				acceptConn = NetKernel.postOffice.handleAccept(port);
+			} catch (MalformedPacketException e)
+			{
+				e.printStackTrace();
+			}
+			if (acceptConn == null)
 			{
 				System.err.println("Failed to get available file descriptor");
 				return -1;
 			}
 			// Put it in the file array, give it a file descriptor (from User Process)
 			fileDescriptors[descriptorAvail] = acceptConn;
-
 		}
-		
 		return descriptorAvail;   	
     }
     

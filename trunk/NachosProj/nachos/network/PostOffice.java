@@ -180,6 +180,7 @@ public class PostOffice {
     	{
     		// create a new channel
     		Channel ch = new Channel(linkAddress, port, msg.packet.srcLink, msg.srcPort);
+    		ch.stt = Channel.ConnectionState.SYN_RCVD;
     		activeChannels.add(linkAddress + ":" + port + ":" + msg.packet.srcLink + ":" + msg.srcPort);
     		channelList.add(ch);
     		// send a SYN_ACK
@@ -187,8 +188,10 @@ public class PostOffice {
     		contents[0] = MailMessage.SYN_ACK;
     		MailMessage synAckMsg = new MailMessage(msg.packet.srcLink, msg.srcPort, linkAddress, port, contents);
     		send(synAckMsg);
+    		ch.stt = Channel.ConnectionState.ESTABLISHED;
+    		return ch;
     	}
-		return new OpenFile();
+		return null;
 	}
     
     

@@ -38,8 +38,9 @@ public class Channel extends OpenFile
 		 // at this point wait for the server to send a syn ack
 		 MailMessage rspMsg = NetKernel.postOffice.receive(srcPort);
 		 byte rspFlag = rspMsg.contents[0];
-		 if(rspFlag ==  MailMessage.ACK)
+		 if(rspFlag ==  MailMessage.SYN_ACK)
 		 {
+			 stt = ConnectionState.ESTABLISHED;
 			 return this;
 		 }
 		 else
