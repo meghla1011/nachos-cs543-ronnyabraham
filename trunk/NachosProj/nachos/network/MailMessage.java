@@ -105,5 +105,6 @@ public class MailMessage {
     public static final int portLimit = 128;
     
     public static byte SYN = 0x01;
-    public static byte ACK = 0x02;
+    public static byte SYN_ACK = 0x02;
+    public static byte ACK = 0x03;
 }
