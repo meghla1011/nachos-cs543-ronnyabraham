@@ -46,8 +46,11 @@ public class NetProcess extends UserProcess {
 			}
 			// Put it in the file array, give it a file descriptor (from User Process)
 			fileDescriptors[descriptorAvail] = newConn;
-			
+			System.out.println("Successfully established connection "+ ((Channel)newConn).srcId 
+					            + " " + ((Channel)newConn).srcPort + " " + ((Channel)newConn).destId 
+					            + " "+ ((Channel)newConn).destPort);
     	}
+    
     	return descriptorAvail;
     }
     
@@ -74,6 +77,9 @@ public class NetProcess extends UserProcess {
 			}
 			// Put it in the file array, give it a file descriptor (from User Process)
 			fileDescriptors[descriptorAvail] = acceptConn;
+			System.out.println("Successfully accepted connection "+ ((Channel)acceptConn).srcId 
+		            + " " + ((Channel)acceptConn).srcPort + " " + ((Channel)acceptConn).destId 
+		            + " "+ ((Channel)acceptConn).destPort);
 		}
 		return descriptorAvail;   	
     }
