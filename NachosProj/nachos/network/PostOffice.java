@@ -168,7 +168,28 @@ public class PostOffice {
 		return retval;
      }
     
-    
+    public OpenFile handleAccept(int port) throws MalformedPacketException
+	{
+    	MailMessage msg = receive(port);
+    	if(msg == null)
+    	{
+    		return null;
+    	}
+    	byte flag = msg.contents[0];
+    	if(flag == MailMessage.SYN)
+    	{
+    		// create a new channel
+    		Channel ch = new Channel(linkAddress, port, msg.packet.srcLink, msg.srcPort);
+    		activeChannels.add(linkAddress + ":" + port + ":" + msg.packet.srcLink + ":" + msg.srcPort);
+    		channelList.add(ch);
+    		// send a SYN_ACK
+    		byte[] contents = new byte[1];
+    		contents[0] = MailMessage.SYN_ACK;
+    		MailMessage synAckMsg = new MailMessage(msg.packet.srcLink, msg.srcPort, linkAddress, port, contents);
+    		send(synAckMsg);
+    	}
+		return new OpenFile();
+	}
     
     
     private SynchList[] queues;

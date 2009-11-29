@@ -55,17 +55,15 @@ public class NetProcess extends UserProcess {
 		if ( descriptorAvail != -1 )
 		{
 			// Open a file for connection
-			OpenFile acceptConn = NetKernel.postOffice.handleAccept ( port );
-
+			OpenFile acceptConn = NetKernel.postOffice.handleAccept(port);
 			if ( acceptConn == null )
 			{
 				System.err.println("Failed to get available file descriptor");
 				return -1;
 			}
-			
 			// Put it in the file array, give it a file descriptor (from User Process)
 			fileDescriptors[descriptorAvail] = acceptConn;
-			
+
 		}
 		
 		return descriptorAvail;   	
