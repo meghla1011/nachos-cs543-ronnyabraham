@@ -49,6 +49,20 @@ public class Channel extends OpenFile
 		 }
 	 }
 	 
+   public int read(byte[] buf, int offset, int length)
+   {
+		return -1;
+   }
+
+   
+   public int write(byte[] buf, int offset, int length)
+   {
+		return -1;
+   }
+	    
+	 
+	 
+	 
 	 private int srcId, srcPort, destId, destPort;
 	 
 	 ConnectionState stt;

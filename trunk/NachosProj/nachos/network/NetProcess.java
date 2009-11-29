@@ -84,35 +84,40 @@ public class NetProcess extends UserProcess {
      * int read(int fd, char *buffer, int size);
      * where the arguments are fetched from registers a0, a1, and a2 respectively
      */
-    protected int handleRead(int a0,int a1, int a2 )
+    protected int handleRead(int a0,int a1, int a2)
     {
-    	Lib.debug(dbgProcess, "handleRead trying to read file descriptor " + a0);
-    	
+    	Lib.debug(dbgProcess, "NetProcess trying to read file descriptor " + a0);
     	// verify the file descriptor id is legal
     	if ( a0 < 0 || a0 > 17 )
     	{
-			Lib.debug(dbgProcess, "UserProcess::handleRead: illegal file descriptor");
+			Lib.debug(dbgProcess, "NetProcess::handleRead: illegal file descriptor");
     		return -1;
     	}
-    	
-    	// TODO: get our file descriptor from fileDescriptor array.
-    	// May need a manager class to be the go between guy between
-    	// using openFile and the network stuff (PostOffice?).
     	
     	OpenFile fd = fileDescriptors[a0];
     	
     	if( fd == null )
     	{
-			Lib.debug(dbgProcess, "UserProcess::handleRead: file descriptor " + a0 + " is null");
+			Lib.debug(dbgProcess, "NetProcess::handleRead: file descriptor " + a0 + " is null");
     		return -1;
     	}
     	
-    	//TODO:  How do we read from the file descriptor
-    	// Do we want to just need to make a call to setup something special
-    	// for the network send and receive and then call our handleRead from
-    	// UserProcess.
-    	
-        int bytesRead = super.handleRead(a0, a1, a2);
+    	// read from network into a buffer
+    	byte buf [] = new byte[a2];
+    	int offset = 0;
+    	Channel ch = (Channel)fd;
+        int bytesRead = ch.read(buf, offset, a2);
+        
+        StringBuffer outputMsg = new StringBuffer("handleRead read " + a2 + 
+				" bytes from file descriptor: " + a0 + ": ");
+		for (int i=0; i<buf.length; i++)
+		{
+			char c = (char)buf[i];
+			outputMsg.append(c );
+		}
+		Lib.debug(dbgProcess, outputMsg.toString());
+		
+		writeVirtualMemory(a1,buf,offset,bytesRead);
     	return bytesRead;    	
     }
     
@@ -127,27 +132,29 @@ public class NetProcess extends UserProcess {
     	// verify the file descriptor id is legal
     	if ( a0 < 0 || a0 > 17 )
     	{
-			Lib.debug(dbgProcess, "UserProcess::handleWrite: illegal file descriptor");
+			Lib.debug(dbgProcess, "NetProcess::handleWrite: illegal file descriptor");
     		return -1;
     	}
-    	
-    	// TODO: get our file descriptor from fileDescriptor array.
-    	// May need a manager class to be the go between guy between
-    	// using openFile and the network stuff (PostOffice?).
     	
     	OpenFile fd = fileDescriptors[a0];
-    	
     	if( fd == null )
     	{
-			Lib.debug(dbgProcess, "UserProcess::handleWrite: file descriptor " + a0 + " is null");
+			Lib.debug(dbgProcess, "NetProcess::handleWrite: file descriptor " + a0 + " is null");
     		return -1;
     	}
-    	
-    	//TODO:  How do we write to the file descriptor
-    	// Solution will be similiar to how we handle read calls
-    	
-        int bytesWritten = super.handleWrite(a0, a1, a2);
-    	return bytesWritten;  
+
+    	byte buf [] = new byte[a2];
+    	int offset = 0;
+        int bytesRead = readVirtualMemory(a1,buf);
+        if(bytesRead != a2 )
+        {
+			Lib.debug(dbgProcess, "NetProcess::handleWrite: virual memory read less bytes than excepted " +bytesRead);
+        	return -1;
+        }
+        // write to the network
+        Channel ch = (Channel)fd;
+        int bytesWritten = ch.write(buf,offset,a2);
+        return bytesWritten;
     } 
     
     
