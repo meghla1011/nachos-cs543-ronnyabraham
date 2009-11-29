@@ -2,6 +2,10 @@ package nachos.network;
 
 import java.util.Vector;
 
+/*
+ * class channel
+ */
+
 public class Channel {
 
 	 private int sourceId;
