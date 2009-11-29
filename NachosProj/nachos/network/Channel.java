@@ -63,7 +63,7 @@ public class Channel extends OpenFile
 	 
 	 
 	 
-	 private int srcId, srcPort, destId, destPort;
+	 public int srcId, srcPort, destId, destPort;
 	 
 	 ConnectionState stt;
 	 public static enum ConnectionState {SYN_SENT, SYN_RCVD, ESTABLISHED, STP_RCVD, STP_SENT, CLOSING, CLOSED}

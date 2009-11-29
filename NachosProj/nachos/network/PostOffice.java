@@ -26,6 +26,7 @@ public class PostOffice {
      */
     public PostOffice() {
     linkAddress = Machine.networkLink().getLinkAddress();
+    
 	messageReceived = new Semaphore(0);
 	messageSent = new Semaphore(0);
 	sendLock = new Lock();
