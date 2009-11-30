@@ -190,6 +190,7 @@ public class PostOffice {
     		MailMessage synAckMsg = new MailMessage(msg.packet.srcLink, msg.srcPort, linkAddress, port, contents);
     		send(synAckMsg);
     		ch.stt = Channel.ConnectionState.ESTABLISHED;
+    		ch.startRcvLoopThread();
     		return ch;
     	}
 		return null;

@@ -1,9 +1,13 @@
 package nachos.network;
 
+import java.util.LinkedList;
 import java.util.Vector;
 
 import nachos.machine.MalformedPacketException;
 import nachos.machine.OpenFile;
+import nachos.threads.KThread;
+import nachos.threads.Lock;
+import nachos.threads.SynchList;
 
 /*
  * class channel
@@ -41,6 +45,7 @@ public class Channel extends OpenFile
 		 if(rspFlag ==  MailMessage.SYN_ACK)
 		 {
 			 stt = ConnectionState.ESTABLISHED;
+			 startRcvLoopThread();
 			 return this;
 		 }
 		 else
@@ -57,13 +62,15 @@ public class Channel extends OpenFile
 	   }
 	   
 	   int bytesRcvd = 0;
-	   while(bytesRcvd < length)
+	   
+	   qLock.acquire();
+	   while(inMsgQ.size() > 0)
 	   {
-		   MailMessage msg = NetKernel.postOffice.receive(srcPort);
+		   MailMessage msg = inMsgQ.removeFirst();
 		   System.arraycopy(msg.contents, 3, buf, bytesRcvd, msg.contents.length - 3);
 		   bytesRcvd += msg.contents.length - 3;
-		   
 	   }
+	   qLock.release();
 	   
 	   return bytesRcvd;
    }
@@ -133,17 +140,49 @@ public class Channel extends OpenFile
    {
 	   return contentLen % netPayLoad;
    }
-	    
-	 
+   
+   void startRcvLoopThread()
+   {
+	   if(rcvLoopThread == null)
+	   {
+		   rcvLoopThread = new KThread(new RcvLoop(srcPort, inMsgQ, qLock));
+		   rcvLoopThread.setName("Channel rcv loop # " + channelId++);
+		   rcvLoopThread.fork();
+	   }
+   }
+   
+   private static class RcvLoop implements Runnable
+   {
+	   RcvLoop(int port, LinkedList<MailMessage> q, Lock lk)
+       {
+		   this.port = port;
+		   this.q = q;
+		   this.lk = lk;
+       }
+
+       public void run()
+       {
+    	   lk.acquire();
+    	   MailMessage msg = NetKernel.postOffice.receive(port);
+		   q.add(msg);
+		   lk.release();
+       }
+       private int port;
+       private LinkedList<MailMessage> q;
+       private Lock lk;
+   }
+   
 	 
 	 
 	 public int srcId, srcPort, destId, destPort;
 	 private short sendMsgId = 0;
 	 private short rcvMsgId = 0;
 	 
+	 KThread rcvLoopThread = null;
+	 LinkedList<MailMessage> inMsgQ = new LinkedList<MailMessage>();
+	 Lock qLock = new Lock();
+	 public static int channelId = 0;
+	 
 	 ConnectionState stt;
 	 public static enum ConnectionState {SYN_SENT, SYN_RCVD, ESTABLISHED, STP_RCVD, STP_SENT, CLOSING, CLOSED}
-	 
-	 
-	 
 }
