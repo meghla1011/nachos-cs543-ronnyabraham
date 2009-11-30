@@ -4,8 +4,8 @@ int main(int argc, char *argv[])
 {
       
 	  int port = 100;
-	  while(1)
-	  {
+	  //while(1)
+	  //{
 		  int socket = accept(port);
 		  if ( socket != -1 )
 		  {
@@ -14,5 +14,7 @@ int main(int argc, char *argv[])
 		  else{
 			   printf("Failed to accept a client a connection \n");
 		  }
-      }	  
+		  char buffer[20];
+		  read(socket,buffer,15);
+      //}	  
 }
