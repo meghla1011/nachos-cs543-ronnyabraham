@@ -27,7 +27,7 @@ public class NetProcess extends UserProcess {
     {	
     	int descriptorAvail = getFirstAvailableFd();
     	
-    	if(descriptorAvail != -1 )
+    	if(descriptorAvail != -1)
     	{
     		OpenFile newConn = null;
 			try
