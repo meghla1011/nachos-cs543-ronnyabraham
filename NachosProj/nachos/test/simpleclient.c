@@ -11,6 +11,8 @@ int main(int argc, char *argv[])
 	  if ( socket != -1 )
 	  {
 			printf("Client successfully connected to server\n");
+			char message[20] = "Hello World";
+			write (socket,message,strlen(message));
 	  }	  
 	  else
 	  {
