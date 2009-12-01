@@ -560,7 +560,7 @@ public class UserProcess {
 		}
     }
     
-    private int getFirstAvailableFd ()
+    protected int getFirstAvailableFd ()
 	{
 		// Find the first open slot
 		for ( int i = 2; i < fileDescriptors.length; i++ )
