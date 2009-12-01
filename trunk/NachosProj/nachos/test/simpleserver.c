@@ -2,7 +2,10 @@
 
 int main(int argc, char *argv[])
 {
-      
+
+	void* tempBuffer[100];
+	int bytesToRead = 11;
+
 	  int port = 100;
 	  //while(1)
 	  //{
@@ -14,7 +17,6 @@ int main(int argc, char *argv[])
 		  else{
 			   printf("Failed to accept a client a connection \n");
 		  }
-		  char buffer[20];
-		  read(socket,buffer,15);
-      //}	  
+		  read(socket, tempBuffer, bytesToRead);
+      //}
 }
