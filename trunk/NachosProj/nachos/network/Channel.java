@@ -90,9 +90,13 @@ public class Channel extends OpenFile
 	   int bytesSent = 0;
 	   for(int i = 0; i < numMessages - 1; ++i)
 	   {
-		   byte[] contents = new byte[netPayload];
+		   byte[] contents = new byte[netPayload + 3];
 		   contents[0] = MailMessage.SND;
-		   System.arraycopy(new Short(sendMsgId++), 0, contents, 1, 2);
+		   byte[] msgIdBuf = new byte[2];
+		   msgIdBuf[0] = (byte)(sendMsgId >> 8);
+		   msgIdBuf[0] = (byte)(sendMsgId & 0x00FF);
+		   sendMsgId++;
+		   System.arraycopy(msgIdBuf, 0, contents, 1, 2);
 		   System.arraycopy(buf, idx, contents, 3, netPayload);
 		   idx += netPayload;
 		   MailMessage msg = null;
@@ -110,9 +114,13 @@ public class Channel extends OpenFile
 	   if(lastMsgLen > 0)
 	   {
 		// last msg
-		   byte[] contents = new byte[lastMsgLen];
+		   byte[] contents = new byte[lastMsgLen + 3];
 		   contents[0] = MailMessage.SND;
-		   System.arraycopy(new Short(sendMsgId++), 0, contents, 1, 2);
+		   byte[] msgIdBuf = new byte[2];
+		   msgIdBuf[0] = (byte)(sendMsgId >> 8);
+		   msgIdBuf[0] = (byte)(sendMsgId & 0x00FF);
+		   sendMsgId++;
+		   System.arraycopy(msgIdBuf, 0, contents, 1, 2);
 		   System.arraycopy(buf, idx, contents, 3, lastMsgLen);
 		   MailMessage msg = null;
 		   try

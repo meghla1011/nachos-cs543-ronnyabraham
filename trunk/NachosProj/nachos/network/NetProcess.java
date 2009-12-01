@@ -114,14 +114,16 @@ public class NetProcess extends UserProcess {
     	Channel ch = (Channel)fd;
         int bytesRead = ch.read(buf, offset, a2);
         
-        StringBuffer outputMsg = new StringBuffer("handleRead read " + a2 + 
-				" bytes from file descriptor: " + a0 + ": ");
+        StringBuffer outputMsg = new StringBuffer("");
+        //StringBuffer outputMsg = new StringBuffer("handleRead read " + a2 + 
+		//		" bytes from file descriptor: " + a0 + ": ");
 		for (int i=0; i<buf.length; i++)
 		{
 			char c = (char)buf[i];
-			outputMsg.append(c );
+			outputMsg.append(c);
 		}
 		Lib.debug(dbgProcess, outputMsg.toString());
+		System.out.println(outputMsg.toString());
 		
 		writeVirtualMemory(a1,buf,offset,bytesRead);
     	return bytesRead;    	
@@ -160,13 +162,11 @@ public class NetProcess extends UserProcess {
         // write to the network
         Channel ch = (Channel)fd;
         int bytesWritten = ch.write(buf,offset,a2);
+        System.out.println("Sent "+ bytesWritten + " bytes, to node " + ch.destId + " port " + ch.destPort);
         return bytesWritten;
     } 
     
-    
-    private static final int
-	syscallConnect = 11,
-	syscallAccept = 12;
+	
     
     /**
      * Handle a syscall exception. Called by <tt>handleException()</tt>. The
