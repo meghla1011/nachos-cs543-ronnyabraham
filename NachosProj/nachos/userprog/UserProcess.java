@@ -51,19 +51,7 @@ public class UserProcess {
 			String errorMsg = "UserProcess::UserProcess Failed to open file for writing";
 			Lib.debug(dbgProcess, errorMsg);	
 		}
-
-		processId = nextProcessId;
-		nextProcessId++;
-		activeProcesses.put(processId, this);
 		
-		initializeMemory();
-	}
-    
-    /**
-     * Initializes Memory as required for a User Process
-     */
-	protected void initializeMemory()
-	{
 		//Each process will be allocated 15 pages, since 8 did not seem to be sufficient
 		int numPhysPages = 15;
 		pageTable = new TranslationEntry[numPhysPages];
@@ -72,9 +60,15 @@ public class UserProcess {
 		if (memoryManager == null)
 		{
 			Lib.debug(dbgProcess, "memory manager is null");
+			//TODO:  Assert here?
 		}
 			
 		virtualMemory = memoryManager.getPages(numPhysPages);
+		
+		if (virtualMemory == null)
+		{
+			//TODO:  call handleExit?
+		}
 		
 		int ppn = 0;
 		Page currentPage;
@@ -84,50 +78,12 @@ public class UserProcess {
 			ppn = currentPage.getValue();
 			pageTable[i] = new TranslationEntry(i,ppn, true,false,false,false);
 		}
+
+		processId = nextProcessId;
+		nextProcessId++;
+		activeProcesses.put(processId, this);
 	}
-	
-    /**
-     * Destroys the memory when exiting from a User Process
-     */
-	protected void destoryMemory()
-	{
-		MemoryManager memoryManager = UserKernel.memoryManager; 
-		memoryManager.freePages(virtualMemory);
-	}
-	
-    /**
-     * Returns whether an address is valid  
-     *
-     * @return	the validity of the address.
-     */
-	protected boolean isValidMemoryAddress(int possibleAddress)
-	{
-		return (possibleAddress < 0 || possibleAddress
-				>= virtualMemory.size() * pageSize);
-	}
-	
-    /**
-     * Sets any required read flags  
-     *
-     * @param	the virtual page number.
-     */
-	protected void setReadFlags(int vpn)
-	{
-    	pageTable[vpn].used = true;
-	}
-	
-    /**
-     * Sets any required write flags  
-     *
-     * @param	the virtual page number.
-     */
-	protected void setWriteFlags(int vpn)
-	{
-    	pageTable[vpn].used = true;
-    	pageTable[vpn].dirty = true;
-	}
-	
-	
+    
     /**
      * Allocate and return a new process of the correct class. The class name
      * is specified by the <tt>nachos.conf</tt> key
@@ -239,13 +195,12 @@ public class UserProcess {
 	byte[] memory = Machine.processor().getMemory();
 	
 	// performs virtual addresses to physical addresses mapping
-	if (! isValidMemoryAddress(vaddr))
+	if (vaddr < 0 || vaddr >= virtualMemory.size() * pageSize)
 	    return 0;
 	
 	int virtualPageNumber = vaddr / pageSize;
 	int realMemOffset = vaddr % pageSize;
-	int realPageNumber = returnFrameNumber(virtualPageNumber, realMemOffset);
-	setReadFlags(virtualPageNumber);
+	int realPageNumber = pageTable[virtualPageNumber].ppn;
 	
 	int amount = Math.min(length, memory.length-vaddr);
 
@@ -264,11 +219,13 @@ public class UserProcess {
 		newOffset = newOffset + amountToWrite;
 		
 		virtualPageNumber++;
-		realPageNumber = returnFrameNumber(virtualPageNumber, 0);
-		setReadFlags(virtualPageNumber);
+		realPageNumber = pageTable[virtualPageNumber].ppn;
 		realMemOffset = 0;
 	}
 	
+	//Lib.debug(dbgProcess, "copying " + amount + " bytes from memory position " + realPageNumber + realMemOffset + " to destination offset " + newOffset);
+	
+	//arraycopy parameters: (src, src_position, destination, destination_position, length)
 	System.arraycopy(memory, (realPageNumber*pageSize) + realMemOffset, data, newOffset, amount);
 
 	return amount;
@@ -310,12 +267,11 @@ public class UserProcess {
 
 	byte[] memory = Machine.processor().getMemory();
 	// performs virtual addresses to physical addresses mapping
-	if (! isValidMemoryAddress(vaddr))
+	if (vaddr < 0 || vaddr >= virtualMemory.size() * pageSize)
 	    return 0;
 	int virtualPageNumber = vaddr / pageSize;
 	int realMemOffset = vaddr % pageSize;
-	int realPageNumber = returnFrameNumber(virtualPageNumber, realMemOffset);
-	setWriteFlags(virtualPageNumber);
+	int realPageNumber = pageTable[virtualPageNumber].ppn;
 	
 	int amount = Math.min(length, memory.length-vaddr);
 
@@ -335,8 +291,7 @@ public class UserProcess {
 		newOffset = newOffset + amountToWrite;
 		
 		virtualPageNumber++;
-		realPageNumber = returnFrameNumber(virtualPageNumber, 0);
-		setWriteFlags(virtualPageNumber);
+		realPageNumber = pageTable[virtualPageNumber].ppn;
 		realMemOffset = 0;
 	}
 
@@ -358,7 +313,9 @@ public class UserProcess {
      */
     private boolean load(String name, String[] args) {
 	Lib.debug(dbgProcess, "UserProcess.load(\"" + name + "\")");
-		
+	
+	//TODO:  Handle coff sections that are read only
+	
 	OpenFile executable = ThreadedKernel.fileSystem.open(name, false);
 	if (executable == null) {
 	    Lib.debug(dbgProcess, "\topen failed");
@@ -632,7 +589,7 @@ public class UserProcess {
      * int  read(int fd, char *buffer, int size);
      * where the arguments are fetched from registers a0, a1, and a2 respectively
      */
-    protected int handleRead(int a0,int a1, int a2 )
+    private int handleRead(int a0,int a1, int a2 )
     {
     	Lib.debug(dbgProcess, "handleRead trying to read file descriptor " + a0);
     	
@@ -673,7 +630,7 @@ public class UserProcess {
      * Handle the write() system call. 
      * int  write(int fd, char *buffer, int size);
      */
-    protected int handleWrite(int a0,int a1, int a2)
+    private int handleWrite(int a0,int a1, int a2)
     {
     	Lib.debug(dbgProcess, "handleWrite trying to write " + a2 + " bytes to file descriptor " + a0);
     	
@@ -832,9 +789,12 @@ public class UserProcess {
 	syscallCreate = 4,
 	syscallOpen = 5,
 	syscallRead = 6,
-	syscallWrite = 7,
-	syscallClose = 8,
-	syscallUnlink = 9;
+	syscallConnect = 11,
+	syscallAccept = 12;; 
+
+	protected static final int syscallWrite = 7;
+
+	static final int syscallClose = 8, syscallUnlink = 9;
 
     /**
      * Handle a syscall exception. Called by <tt>handleException()</tt>. The
@@ -883,6 +843,7 @@ public class UserProcess {
 	case syscallExec:
 		System.out.println("system call syscallExec");
 		return handleExec(a0,a1,a2);
+		//return -1;
 	case syscallJoin:
 		return handleJoin(a0,a1);
 	case syscallExit:
@@ -973,9 +934,10 @@ public class UserProcess {
     
     private int handleExit(int a0)
     {
-
-    	destoryMemory();
-
+    	//BEGIN:This needs to be done if exiting cleanly, where does this call go if not a clean exit?
+		MemoryManager memoryManager = UserKernel.memoryManager; 
+		memoryManager.freePages(virtualMemory);
+		//END:
 		
         int returnValue = 0;
              
@@ -1036,29 +998,16 @@ public class UserProcess {
     		Lib.assertNotReached("Unexpected exception");
     	}
     }
-    
-    /**
-     * returns the Frame Number using the implementation
-     *  required for a User Process
-     *
-     * @return	the frame number associated with that page
-     *  number.
-     */
-    protected int returnFrameNumber(int virtualPageNumber, int offset)
-    {
-    	int realPageNumber = pageTable[virtualPageNumber].ppn;
-    	return realPageNumber;
-    }
 
     /** The program being run by this process. */
     protected Coff coff;
 
     /** This process's page table. */
-    private TranslationEntry[] pageTable;
+    protected TranslationEntry[] pageTable;
     /** The number of contiguous pages occupied by the program. */
     protected int numPages;
 
-    protected LinkedList<Page> virtualMemory;
+    LinkedList<Page> virtualMemory;
 
     /** The number of pages in the program's stack. */
     protected final int stackPages = 8;
@@ -1071,7 +1020,7 @@ public class UserProcess {
     private static final char dbgProcess = 'a';
     private Vector<Integer> childprocessList = new Vector<Integer>();
     private static Map <Integer, UserProcess> activeProcesses = new HashMap <Integer, UserProcess> ();
-    protected int processId =-1;
+    private int processId =-1;
     private static int nextProcessId = 0;
     private static final int statusFinished = 4;
     private LinkedList <String> deleteList = new LinkedList<String> ();
