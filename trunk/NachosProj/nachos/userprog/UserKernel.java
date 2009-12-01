@@ -10,6 +10,7 @@ import nachos.userprog.*;
 /**
  * A kernel that can support multiple user processes.
  */
+
 public class UserKernel extends ThreadedKernel {
     /**
      * Allocate a new user kernel.
