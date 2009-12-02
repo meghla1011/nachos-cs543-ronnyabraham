@@ -113,17 +113,9 @@ public class NetProcess extends UserProcess {
     	int offset = 0;
     	Channel ch = (Channel)fd;
         int bytesRead = ch.read(buf, offset, a2);
-        
-        StringBuffer outputMsg = new StringBuffer("");
-        //StringBuffer outputMsg = new StringBuffer("handleRead read " + a2 + 
-		//		" bytes from file descriptor: " + a0 + ": ");
-		for (int i=0; i<buf.length; i++)
-		{
-			char c = (char)buf[i];
-			outputMsg.append(c);
-		}
-		Lib.debug(dbgProcess, outputMsg.toString());
-		System.out.println(outputMsg.toString());
+        String s = new String(buf);
+        s = s.substring(0, bytesRead);
+		System.out.print(s);
 		
 		writeVirtualMemory(a1,buf,offset,bytesRead);
     	return bytesRead;    	
