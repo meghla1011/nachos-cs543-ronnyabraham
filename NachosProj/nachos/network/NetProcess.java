@@ -157,7 +157,23 @@ public class NetProcess extends UserProcess {
         return bytesWritten;
     } 
     
-	
+	private int handleClose( int a0 ) 
+	{
+		//retrieve the file descriptor
+		OpenFile fileDec = fileDescriptors[a0];
+
+		if ( fileDec == null )
+			return -1;
+
+		// Close the file
+		fileDec.close();
+
+		// Remove from descriptorList
+		fileDescriptors[a0] = null;
+		System.out.println("Sucessfully closed the connection "+a0);
+
+		return 0;
+	}
     
     /**
      * Handle a syscall exception. Called by <tt>handleException()</tt>. The
@@ -186,6 +202,8 @@ public class NetProcess extends UserProcess {
 	    return handleRead(a0,a1,a2);
 	case syscallWrite:
 	    return handleWrite(a0,a1,a2);
+	case syscallClose: 
+		return handleClose( a0 );    
 	default:
 	    return super.handleSyscall(syscall, a0, a1, a2, a3);
 	}
