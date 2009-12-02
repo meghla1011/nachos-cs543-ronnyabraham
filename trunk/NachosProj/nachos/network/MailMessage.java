@@ -107,5 +107,5 @@ public class MailMessage {
     public static byte SYN = 0x01;
     public static byte SYN_ACK = 0x02;
     public static byte ACK = 0x03;
-    public static byte SND = 0x04;
+    public static byte DAT = 0x04;
 }

@@ -82,7 +82,7 @@ public class Channel extends OpenFile
 	   {
 		   return -1;
 	   }
-	   int netPayload = MailMessage.maxContentsLength - 3;
+	   int netPayload = DataMsg.maxPayload;
 	   int numMessages = calcNumMessages(length, MailMessage.maxContentsLength - 3);
 	   int lastMsgLen = lastMsgLen(length, MailMessage.maxContentsLength - 3);
 	   
@@ -90,19 +90,16 @@ public class Channel extends OpenFile
 	   int bytesSent = 0;
 	   for(int i = 0; i < numMessages - 1; ++i)
 	   {
-		   byte[] contents = new byte[netPayload + 3];
-		   contents[0] = MailMessage.SND;
-		   byte[] msgIdBuf = new byte[2];
-		   msgIdBuf[0] = (byte)(sendMsgId >> 8);
-		   msgIdBuf[1] = (byte)(sendMsgId & 0x00FF);
-		   sendMsgId++;
-		   System.arraycopy(msgIdBuf, 0, contents, 1, 2);
-		   System.arraycopy(buf, idx, contents, 3, netPayload);
+		   byte[] contents = new byte[netPayload];
+		   System.arraycopy(buf, idx, contents, 0, netPayload);
 		   idx += netPayload;
 		   MailMessage msg = null;
 		   try
 		   {
-			   msg = new MailMessage(destId, destPort, srcId, srcPort, contents);
+			   DataMsg dm = new DataMsg(destId, destPort, srcId, srcPort, contents, sendMsgId);
+			   sendMsgId++;
+			   msg = dm.mailMsg();
+			   
 		   }
 		   catch (MalformedPacketException e)
 		   {
@@ -114,18 +111,14 @@ public class Channel extends OpenFile
 	   if(lastMsgLen > 0)
 	   {
 		// last msg
-		   byte[] contents = new byte[lastMsgLen + 3];
-		   contents[0] = MailMessage.SND;
-		   byte[] msgIdBuf = new byte[2];
-		   msgIdBuf[0] = (byte)(sendMsgId >> 8);
-		   msgIdBuf[0] = (byte)(sendMsgId & 0x00FF);
-		   sendMsgId++;
-		   System.arraycopy(msgIdBuf, 0, contents, 1, 2);
-		   System.arraycopy(buf, idx, contents, 3, lastMsgLen);
+		   byte[] contents = new byte[lastMsgLen];
+		   System.arraycopy(buf, idx, contents, 0, lastMsgLen);
 		   MailMessage msg = null;
 		   try
 		   {
-			   msg = new MailMessage(destId, destPort, srcId, srcPort, contents);
+			   DataMsg dm = new DataMsg(destId, destPort, srcId, srcPort, contents, sendMsgId);
+			   sendMsgId++;
+			   msg = dm.mailMsg();
 		   }
 		   catch (MalformedPacketException e)
 		   {
