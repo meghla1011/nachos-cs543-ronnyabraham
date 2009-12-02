@@ -4,7 +4,7 @@ int main(int argc, char *argv[])
 {
 
 	void* tempBuffer[100];
-	int bytesToRead = 11;
+	int bytesToRead = 99;
 
 	  int port = 100;
 	  //while(1)
