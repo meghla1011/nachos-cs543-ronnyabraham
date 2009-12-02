@@ -18,5 +18,6 @@ int main(int argc, char *argv[])
 			   printf("Failed to accept a client a connection \n");
 		  }
 		  read(socket, tempBuffer, bytesToRead);
+		  close(socket);
       //}
 }
