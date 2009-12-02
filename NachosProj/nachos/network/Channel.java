@@ -94,7 +94,7 @@ public class Channel extends OpenFile
 		   contents[0] = MailMessage.SND;
 		   byte[] msgIdBuf = new byte[2];
 		   msgIdBuf[0] = (byte)(sendMsgId >> 8);
-		   msgIdBuf[0] = (byte)(sendMsgId & 0x00FF);
+		   msgIdBuf[1] = (byte)(sendMsgId & 0x00FF);
 		   sendMsgId++;
 		   System.arraycopy(msgIdBuf, 0, contents, 1, 2);
 		   System.arraycopy(buf, idx, contents, 3, netPayload);
@@ -170,10 +170,13 @@ public class Channel extends OpenFile
 
        public void run()
        {
-    	   lk.acquire();
-    	   MailMessage msg = NetKernel.postOffice.receive(port);
-		   q.add(msg);
-		   lk.release();
+    	   while(true)
+    	   {
+    		   lk.acquire();
+        	   MailMessage msg = NetKernel.postOffice.receive(port);
+    		   q.add(msg);
+    		   lk.release();
+    	   }
        }
        private int port;
        private LinkedList<MailMessage> q;
