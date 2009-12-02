@@ -794,7 +794,9 @@ public class UserProcess {
 
 	protected static final int syscallWrite = 7;
 
-	static final int syscallClose = 8, syscallUnlink = 9;
+	protected static final int syscallClose = 8;
+
+	static final int syscallUnlink = 9;
 
     /**
      * Handle a syscall exception. Called by <tt>handleException()</tt>. The
