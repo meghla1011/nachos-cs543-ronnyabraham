@@ -14,5 +14,6 @@ int main(int argc, char *argv[])
 		  char *c = ("Hello World");
 		  int bytesToWrite = strlen(c);
 		  bytesSent = write(socket, (void*)c, bytesToWrite);
+		  close(socket);
 	  }
 }
