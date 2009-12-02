@@ -23,6 +23,22 @@ public class DataMsg
 		return msg;
 	}
 	
+	public static short getMsgId(MailMessage msg)
+	{
+		
+		short retval = 0;
+		if(msg.contents.length >= 3)
+		{
+			if(msg.contents[0] == MailMessage.DAT)
+			{
+				retval |= msg.contents[1];
+				retval <<= 8;
+				retval |= msg.contents[2];
+			}
+		}
+		return retval;
+	}
+	
 	public static final int maxPayload = 23;
 	MailMessage msg;
 }

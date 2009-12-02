@@ -7,6 +7,7 @@ import nachos.machine.MalformedPacketException;
 import nachos.machine.OpenFile;
 import nachos.threads.KThread;
 import nachos.threads.Lock;
+import nachos.threads.Semaphore;
 import nachos.threads.SynchList;
 
 /*
@@ -24,12 +25,13 @@ public class Channel extends OpenFile
 	     this.srcPort = srcPort;
 	     this.destId = destId;
 	     this.destPort = destPort;
-	     stt = ConnectionState.CLOSED;
+	     state = ConnectionState.CLOSED;
+	     slidingWnd = new SlidingWindow();
 	 }
 	 
 	 public OpenFile connectToSrv() throws MalformedPacketException
 	 {
-		 if(stt != ConnectionState.CLOSED)
+		 if(state != ConnectionState.CLOSED)
 		 {
 			 return null;
 		 }
@@ -38,13 +40,13 @@ public class Channel extends OpenFile
 		 content[0] = MailMessage.SYN;
 		 MailMessage msg = new MailMessage (destId, destPort, srcId, srcPort, content);
 		 NetKernel.postOffice.send(msg);
-		 stt = ConnectionState.SYN_SENT;
+		 state = ConnectionState.SYN_SENT;
 		 // at this point wait for the server to send a syn ack
 		 MailMessage rspMsg = NetKernel.postOffice.receive(srcPort);
 		 byte rspFlag = rspMsg.contents[0];
 		 if(rspFlag ==  MailMessage.SYN_ACK)
 		 {
-			 stt = ConnectionState.ESTABLISHED;
+			 state = ConnectionState.ESTABLISHED;
 			 startRcvLoopThread();
 			 return this;
 		 }
@@ -56,7 +58,7 @@ public class Channel extends OpenFile
 	 
    public int read(byte[] buf, int offset, int length)
    {
-	   if(stt != ConnectionState.ESTABLISHED)
+	   if(state != ConnectionState.ESTABLISHED)
 	   {
 		   return -1;
 	   }
@@ -78,7 +80,7 @@ public class Channel extends OpenFile
    
    public int write(byte[] buf, int offset, int length)
    {
-	   if(stt != ConnectionState.ESTABLISHED)
+	   if(state != ConnectionState.ESTABLISHED)
 	   {
 		   return -1;
 	   }
@@ -105,6 +107,22 @@ public class Channel extends OpenFile
 		   {
 			e.printStackTrace();
 		   }
+		   // check to see whether the sliding window is full, if it is,
+		   // wait for the receive loop to wake me up, the window is protected with
+		   // the same lock used to synchronize the user thread and the recv loop thread
+		   qLock.acquire();
+		   if(slidingWnd.isWindowFull())
+		   {
+			   qLock.release();
+			   sema.P();
+		   }
+		   else
+		   {
+			   slidingWnd.sentMsgIdList.add(new Short((short)(sendMsgId - 1)));
+			   qLock.release();
+		   }
+		   
+		   // send a data message
 		   NetKernel.postOffice.send(msg);
 		   bytesSent += netPayload;
 	   }
@@ -123,6 +141,17 @@ public class Channel extends OpenFile
 		   catch (MalformedPacketException e)
 		   {
 			e.printStackTrace();
+		   }
+		   qLock.acquire();
+		   if(slidingWnd.isWindowFull())
+		   {
+			   qLock.release();
+			   sema.P();
+		   }
+		   else
+		   {
+			   slidingWnd.sentMsgIdList.add(new Short((short)(sendMsgId - 1)));
+			   qLock.release();
 		   }
 		   NetKernel.postOffice.send(msg);
 		   bytesSent += lastMsgLen;
@@ -146,7 +175,7 @@ public class Channel extends OpenFile
    {
 	   if(rcvLoopThread == null)
 	   {
-		   rcvLoopThread = new KThread(new RcvLoop(srcPort, inMsgQ, qLock));
+		   rcvLoopThread = new KThread(new RcvLoop(srcPort, inMsgQ, qLock, sema, slidingWnd));
 		   rcvLoopThread.setName("Channel rcv loop # " + channelId++);
 		   rcvLoopThread.fork();
 	   }
@@ -154,11 +183,13 @@ public class Channel extends OpenFile
    
    private static class RcvLoop implements Runnable
    {
-	   RcvLoop(int port, LinkedList<MailMessage> q, Lock lk)
+	   RcvLoop(int port, LinkedList<MailMessage> q, Lock lk, Semaphore s, SlidingWindow w)
        {
 		   this.port = port;
 		   this.q = q;
 		   this.lk = lk;
+		   this.windowClearSema = s;
+		   this.wnd = w;
        }
 
        public void run()
@@ -167,26 +198,66 @@ public class Channel extends OpenFile
     	   {
     		   lk.acquire();
         	   MailMessage msg = NetKernel.postOffice.receive(port);
+        	   if(AckMsg.isAck(msg))
+        	   {
+        		   // update the sliding window
+        		   updateSlidingWindow(msg);
+        	   }
+        	   else
+        	   {
+        		   // send an ack!
+        		   sendAck(msg);
+        	   }
     		   q.add(msg);
     		   lk.release();
+    	   }
+       }
+       
+       void sendAck(MailMessage msg)
+       {
+    	   short msgId = DataMsg.getMsgId(msg);
+    	   try
+    	   {
+			AckMsg ack = new AckMsg(msg.packet.srcLink, msg.srcPort, msg.packet.dstLink, msg.dstPort, msgId);
+			NetKernel.postOffice.send(ack.mailMsg());
+    	   }
+    	   catch (MalformedPacketException e)
+    	   {
+			e.printStackTrace();
+    	   }
+       }
+       
+       void updateSlidingWindow(MailMessage msg)
+       {
+    	   int origSz = wnd.sentMsgIdList.size();
+    	   Short s = new Short(AckMsg.getMsgId(msg));
+    	   if(wnd.sentMsgIdList.contains(s))
+    	   {
+    		   wnd.sentMsgIdList.remove(s);
+    		   if(origSz == SlidingWindow.maxWndCapacity)
+    		   {
+    			   // being here means that this update reduces the size of the window from 16 to 15
+    			   // - wake up the sender so he can continue sending any messages
+    			   windowClearSema.V();
+    		   }
     	   }
        }
        private int port;
        private LinkedList<MailMessage> q;
        private Lock lk;
+       private Semaphore windowClearSema;
+       private SlidingWindow wnd;
    }
    
-	 
-	 
 	 public int srcId, srcPort, destId, destPort;
 	 private short sendMsgId = 0;
-	 private short rcvMsgId = 0;
-	 
 	 KThread rcvLoopThread = null;
 	 LinkedList<MailMessage> inMsgQ = new LinkedList<MailMessage>();
 	 Lock qLock = new Lock();
-	 public static int channelId = 0;
+	 Semaphore sema = new Semaphore(0);
+	 SlidingWindow slidingWnd;
 	 
-	 ConnectionState stt;
+	 public static int channelId = 0;
+	 ConnectionState state;
 	 public static enum ConnectionState {SYN_SENT, SYN_RCVD, ESTABLISHED, STP_RCVD, STP_SENT, CLOSING, CLOSED}
 }
