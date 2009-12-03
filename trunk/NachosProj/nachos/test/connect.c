@@ -16,6 +16,5 @@ main()
 {
 	int server = 0;
 	int port = 100;
-
 	int socket = connect(server, port);
 }

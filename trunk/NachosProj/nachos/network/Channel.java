@@ -28,6 +28,10 @@ public class Channel extends OpenFile
 	     state = ConnectionState.CLOSED;
 	     slidingWnd = new SlidingWindow();
 	 }
+	 public static void changeState(ConnectionState newState)
+	 {
+		 state = newState;
+	 }
 	 
 	 public OpenFile connectToSrv() throws MalformedPacketException
 	 {
@@ -56,6 +60,28 @@ public class Channel extends OpenFile
 		 }
 	 }
 	 
+	 public void close()
+	 {
+		 if(state == ConnectionState.CLOSED)
+		 {
+			 return;
+		 }
+
+		 byte[] content = new byte[1];
+		 content[0] = MailMessage.FIN;
+		 MailMessage msg;
+		try {
+			msg = new MailMessage (destId, destPort, srcId, srcPort, content);
+
+		 NetKernel.postOffice.send(msg);
+	     state = ConnectionState.CLOSING;
+		} catch (MalformedPacketException e) {
+			e.printStackTrace();
+		}
+	     return;
+	 }
+
+	 
    public int read(byte[] buf, int offset, int length)
    {
 	   if(state != ConnectionState.ESTABLISHED)
@@ -69,7 +95,15 @@ public class Channel extends OpenFile
 	   while(inMsgQ.size() > 0)
 	   {
 		   MailMessage msg = inMsgQ.removeFirst();
-		   System.arraycopy(msg.contents, 3, buf, bytesRcvd, msg.contents.length - 3);
+		   try
+		   {
+			   System.arraycopy(msg.contents, 3, buf, bytesRcvd, msg.contents.length - 3);
+		   }
+		   catch(Exception e) 
+		   {
+			   
+		   }
+		   
 		   bytesRcvd += msg.contents.length - 3;
 	   }
 	   qLock.release();
@@ -197,17 +231,26 @@ public class Channel extends OpenFile
     	   while(true)
     	   {
         	   MailMessage msg = NetKernel.postOffice.receive(port);
-        	   if(AckMsg.isAck(msg))
+        	   if (FinMsg.isFin(msg))
+        	   {
+        		   sendFinAck(msg);
+        	   }
+        	   else if (FinAckMsg.isFinAck(msg))
+          	   {
+        		   handleFinAck(msg);
+        	   }
+        	   else if(AckMsg.isAck(msg))
         	   {
         		   // update the sliding window
         		   updateSlidingWindow(msg);
         	   }
-        	   else
+        	   else 
         	   {
         		   // send an ack!
         		   sendAck(msg);
         	   }
-        	   lk.acquire();
+  
+    		   lk.acquire();
     		   q.add(msg);
     		   lk.release();
     	   }
@@ -227,11 +270,32 @@ public class Channel extends OpenFile
     	   }
        }
        
+       void sendFinAck(MailMessage msg)
+       {
+    	   changeState(ConnectionState.CLOSING);
+    	   short msgId = DataMsg.getMsgId(msg);
+    	   try
+    	   {
+			FinAckMsg finack = new FinAckMsg(msg.packet.srcLink, msg.srcPort, msg.packet.dstLink, msg.dstPort, msgId);
+			NetKernel.postOffice.send(finack.mailMsg());
+    	   }
+    	   catch (MalformedPacketException e)
+    	   {
+			e.printStackTrace();
+    	   }
+    	   changeState(ConnectionState.CLOSED);
+       }
+       
+       void handleFinAck(MailMessage msg)
+       {
+    	   changeState(ConnectionState.CLOSED);
+       }
+       
        void updateSlidingWindow(MailMessage msg)
        {
     	   int origSz = wnd.sentMsgIdList.size();
     	   Short s = new Short(AckMsg.getMsgId(msg));
-    	   lk.acquire();
+		   lk.acquire();
     	   if(wnd.sentMsgIdList.contains(s))
     	   {
     		   wnd.sentMsgIdList.remove(s);
@@ -242,7 +306,7 @@ public class Channel extends OpenFile
     			   windowClearSema.V();
     		   }
     	   }
-    	   lk.release();
+		   lk.release();
        }
        private int port;
        private LinkedList<MailMessage> q;
@@ -260,6 +324,6 @@ public class Channel extends OpenFile
 	 SlidingWindow slidingWnd;
 	 
 	 public static int channelId = 0;
-	 ConnectionState state;
+	 static ConnectionState state;
 	 public static enum ConnectionState {SYN_SENT, SYN_RCVD, ESTABLISHED, STP_RCVD, STP_SENT, CLOSING, CLOSED}
 }
