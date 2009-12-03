@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 			   printf("Failed to accept a client a connection \n");
 		  }
 		  int i = 0;
-		  while(i < 10)
+		  while(i < 10000)
 		  {
 			  read(socket, tempBuffer, bytesToRead);
 			  read(socket, tempBuffer, bytesToRead);
