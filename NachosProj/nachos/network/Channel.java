@@ -196,7 +196,6 @@ public class Channel extends OpenFile
        {
     	   while(true)
     	   {
-    		   lk.acquire();
         	   MailMessage msg = NetKernel.postOffice.receive(port);
         	   if(AckMsg.isAck(msg))
         	   {
@@ -208,6 +207,7 @@ public class Channel extends OpenFile
         		   // send an ack!
         		   sendAck(msg);
         	   }
+        	   lk.acquire();
     		   q.add(msg);
     		   lk.release();
     	   }
@@ -231,6 +231,7 @@ public class Channel extends OpenFile
        {
     	   int origSz = wnd.sentMsgIdList.size();
     	   Short s = new Short(AckMsg.getMsgId(msg));
+    	   lk.acquire();
     	   if(wnd.sentMsgIdList.contains(s))
     	   {
     		   wnd.sentMsgIdList.remove(s);
@@ -241,6 +242,7 @@ public class Channel extends OpenFile
     			   windowClearSema.V();
     		   }
     	   }
+    	   lk.release();
        }
        private int port;
        private LinkedList<MailMessage> q;
