@@ -16,9 +16,4 @@ main()
 {
   int port = 100;
   int fileDescriptor = accept(port);
-
-  //need to call some reads and writes (do this in the selfTests of the NetProcess or here?)
-
-    //halt();
-    /* not reached */
 }

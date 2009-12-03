@@ -108,4 +108,6 @@ public class MailMessage {
     public static byte SYN_ACK = 0x02;
     public static byte ACK = 0x03;
     public static byte DAT = 0x04;
+    public static byte FIN = 0x05;
+    public static byte FINACK = 0x06;
 }
