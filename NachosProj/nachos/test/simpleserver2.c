@@ -17,6 +17,11 @@ int main(int argc, char *argv[])
 		  else{
 			   printf("Failed to accept a client a connection \n");
 		  }
-		  read(socket, tempBuffer, bytesToRead);
+		  int i = 0;
+		  		  while(i < 10000)
+		  		  {
+		  			  read(socket, tempBuffer, bytesToRead);
+		  			  i++;
+		  		  }
       //}
 }
