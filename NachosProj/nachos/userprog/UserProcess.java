@@ -469,7 +469,7 @@ public class UserProcess {
     /**
      * Handle the creat() system call. 
      */
-    private int handleCreate(int a0)
+    protected int handleCreate(int a0)
     {
     	Lib.debug(dbgProcess, "UserProcess::handleCreate Entered");
     	
@@ -535,7 +535,7 @@ public class UserProcess {
     /**
      * Handle the open() system call. 
      */
-    private int handleOpen(int a0)
+    protected int handleOpen(int a0)
     {
     	Lib.debug(dbgProcess, "UserProcess::handleOpen Entered");
     	
@@ -589,7 +589,7 @@ public class UserProcess {
      * int  read(int fd, char *buffer, int size);
      * where the arguments are fetched from registers a0, a1, and a2 respectively
      */
-    private int handleRead(int a0,int a1, int a2 )
+    protected int handleRead(int a0,int a1, int a2 )
     {
     	Lib.debug(dbgProcess, "handleRead trying to read file descriptor " + a0);
     	
@@ -630,7 +630,7 @@ public class UserProcess {
      * Handle the write() system call. 
      * int  write(int fd, char *buffer, int size);
      */
-    private int handleWrite(int a0,int a1, int a2)
+    protected int handleWrite(int a0,int a1, int a2)
     {
     	Lib.debug(dbgProcess, "handleWrite trying to write " + a2 + " bytes to file descriptor " + a0);
     	
@@ -673,7 +673,7 @@ public class UserProcess {
     /**
      * Handle the close() system call. 
      */
-    private int handleClose(int a0)
+    protected int handleClose(int a0)
     {
     	Lib.debug(dbgProcess, "handleClose trying to close file descriptor " + a0);
     	
@@ -729,7 +729,7 @@ public class UserProcess {
     /**
      * Handle the unlink() system call. 
      */
-    private int handleUnlink(int a0)
+    protected int handleUnlink(int a0)
     {   	
     	//Get the file name
     	String filename = readVirtualMemoryString(a0, 256);
@@ -1026,7 +1026,7 @@ public class UserProcess {
     private static int nextProcessId = 0;
     private static final int statusFinished = 4;
     private LinkedList <String> deleteList = new LinkedList<String> ();
-    private OpenFile[] fileDescriptors = new OpenFile[18];
+    protected OpenFile[] fileDescriptors = new OpenFile[18];
     // fds for stdout and stdin
     private static final int fdStandardInput = 0;
     private static final int fdStandardOutput = 1;

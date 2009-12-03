@@ -1,5 +1,8 @@
 package nachos.network;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
@@ -16,16 +19,12 @@ public class NetProcess extends UserProcess {
     	
     	super();
     	
-    	for(int i = 0; i < fileDescriptors.length; ++i)
-    	{
-    		fileDescriptors[i] = null;
-    	}
-    	
     }
 
     private int handleConnect(int id, int portNum)
     {	
     	int descriptorAvail = getFirstAvailableFd();
+    	fileDescriptorsUsed.add(new Integer(descriptorAvail));
     	
     	if(descriptorAvail != -1)
     	{
@@ -58,7 +57,7 @@ public class NetProcess extends UserProcess {
     {
     	// Get available descriptor number
     	int descriptorAvail = getFirstAvailableFd();
-		
+    	fileDescriptorsUsed.add(new Integer(descriptorAvail));
 		if ( descriptorAvail != -1 )
 		{
 			// Open a file for connection
@@ -91,33 +90,41 @@ public class NetProcess extends UserProcess {
      */
     protected int handleRead(int a0,int a1, int a2)
     {
-    	Lib.debug(dbgProcess, "NetProcess trying to read file descriptor " + a0);
-    	// verify the file descriptor id is legal
-    	if ( a0 < 0 || a0 > 17 )
+    	if (fileDescriptorsUsed.contains(new Integer(a0)))
     	{
-			Lib.debug(dbgProcess, "NetProcess::handleRead: illegal file descriptor");
-    		return -1;
+    		//Lib.debug(dbgProcess, "NetProcess trying to read file descriptor " + a0);
+    		// verify the file descriptor id is legal
+    		if ( a0 < 0 || a0 > 17 )
+    		{
+    			Lib.debug(dbgProcess, "NetProcess::handleRead: illegal file descriptor");
+    			return -1;
+    		}
+
+    		OpenFile fd = fileDescriptors[a0];
+
+    		if( fd == null )
+    		{
+    			Lib.debug(dbgProcess, "NetProcess::handleRead: file descriptor " + a0 + " is null");
+    			return -1;
+    		}
+
+    		// read from network into a buffer
+    		byte buf [] = new byte[a2];
+    		int offset = 0;
+    		Channel ch = (Channel)fd;
+    		int bytesRead = ch.read(buf, offset, a2);
+    		if (bytesRead > 0)
+    		{
+    			String s = new String(buf);
+    			s = s.substring(0, bytesRead);
+    			System.out.print(s);
+
+    			writeVirtualMemory(a1,buf,offset,bytesRead);
+    		}
+
+    		return bytesRead;    	
     	}
-    	
-    	OpenFile fd = fileDescriptors[a0];
-    	
-    	if( fd == null )
-    	{
-			Lib.debug(dbgProcess, "NetProcess::handleRead: file descriptor " + a0 + " is null");
-    		return -1;
-    	}
-    	
-    	// read from network into a buffer
-    	byte buf [] = new byte[a2];
-    	int offset = 0;
-    	Channel ch = (Channel)fd;
-        int bytesRead = ch.read(buf, offset, a2);
-        String s = new String(buf);
-        s = s.substring(0, bytesRead);
-		System.out.print(s);
-		
-		writeVirtualMemory(a1,buf,offset,bytesRead);
-    	return bytesRead;    	
+    	else return super.handleRead(a0, a1, a2);
     }
     
     /**
@@ -126,53 +133,78 @@ public class NetProcess extends UserProcess {
      */
     protected int handleWrite(int a0,int a1, int a2)
     {
-    	Lib.debug(dbgProcess, "handleWrite trying to write to file descriptor " + a0);
-    	
-    	// verify the file descriptor id is legal
-    	if ( a0 < 0 || a0 > 17 )
+    	if (fileDescriptorsUsed.contains(new Integer(a0)))
     	{
-			Lib.debug(dbgProcess, "NetProcess::handleWrite: illegal file descriptor");
-    		return -1;
-    	}
-    	
-    	OpenFile fd = fileDescriptors[a0];
-    	if( fd == null )
-    	{
-			Lib.debug(dbgProcess, "NetProcess::handleWrite: file descriptor " + a0 + " is null");
-    		return -1;
-    	}
+    		Lib.debug(dbgProcess, "handleWrite trying to write to file descriptor " + a0);
 
-    	byte buf [] = new byte[a2];
-    	int offset = 0;
-        int bytesRead = readVirtualMemory(a1,buf);
-        if(bytesRead != a2 )
-        {
-			Lib.debug(dbgProcess, "NetProcess::handleWrite: virual memory read less bytes than excepted " +bytesRead);
-        	return -1;
-        }
-        // write to the network
-        Channel ch = (Channel)fd;
-        int bytesWritten = ch.write(buf,offset,a2);
-        System.out.println("Sent "+ bytesWritten + " bytes, to node " + ch.destId + " port " + ch.destPort);
-        return bytesWritten;
+    		// verify the file descriptor id is legal
+    		if ( a0 < 0 || a0 > 17 )
+    		{
+    			Lib.debug(dbgProcess, "NetProcess::handleWrite: illegal file descriptor");
+    			return -1;
+    		}
+
+    		OpenFile fd = fileDescriptors[a0];
+    		if( fd == null )
+    		{
+    			Lib.debug(dbgProcess, "NetProcess::handleWrite: file descriptor " + a0 + " is null");
+    			return -1;
+    		}
+
+    		byte buf [] = new byte[a2];
+    		int offset = 0;
+    		int bytesRead = readVirtualMemory(a1,buf);
+    		if(bytesRead != a2 )
+    		{
+    			Lib.debug(dbgProcess, "NetProcess::handleWrite: virual memory read less bytes than excepted " +bytesRead);
+    			return -1;
+    		}
+    		// write to the network
+    		Channel ch = (Channel)fd;
+    		int bytesWritten = ch.write(buf,offset,a2);
+    		if (bytesWritten > 0)
+    		{
+    			System.out.println("Sent "+ bytesWritten + " bytes, to node " + ch.destId + " port " + ch.destPort);
+    		}
+    		
+    		return bytesWritten;
+    	}
+    	else return super.handleRead(a0, a1, a2);
     } 
     
-	private int handleClose( int a0 ) 
+    /**
+     * Handle the close() system call. 
+     * int  close(int fd);
+     */
+    protected int handleClose( int a0 ) 
 	{
-		//retrieve the file descriptor
-		OpenFile fileDec = fileDescriptors[a0];
+		if (fileDescriptorsUsed.contains(new Integer(a0)))
+		{
+			//retrieve the file descriptor
+			OpenFile openfile = fileDescriptors[a0];
 
-		if ( fileDec == null )
-			return -1;
+			if ( openfile == null )
+				return -1;
 
-		// Close the file
-		fileDec.close();
+			// Close the file
+			openfile.close();
 
-		// Remove from descriptorList
-		fileDescriptors[a0] = null;
-		System.out.println("Sucessfully closed the connection "+a0);
+			return 0;
+		}
+		else return super.handleClose(a0);
+	}
+    
+    public void removeFileDescriptor( int a0 ) 
+	{
+    	Integer integerFD = new Integer(a0);
+    	if (fileDescriptorsUsed.contains(integerFD))
+    	{
 
-		return 0;
+    		// Remove from descriptorList
+    		fileDescriptors[a0] = null;
+    		System.out.println("Sucessfully closed the connection "+a0);
+    		fileDescriptorsUsed.remove(integerFD);
+    	}
 	}
     
     /**
@@ -210,6 +242,7 @@ public class NetProcess extends UserProcess {
     }
     
     private static final char dbgProcess = 'n';
-    private OpenFile[] fileDescriptors = new OpenFile[18];
+    private ArrayList<Integer> fileDescriptorsUsed = new ArrayList<Integer>();
+//    private OpenFile[] fileDescriptors = new OpenFile[18];
     
 }
