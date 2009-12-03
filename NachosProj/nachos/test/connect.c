@@ -16,6 +16,7 @@ main()
 {
 	int server = 0;
 	int port = 100;
+
 	int socket = connect(server, port);
 
   //need to call some reads and writes (do this in the selfTests of the NetProcess or here?)
